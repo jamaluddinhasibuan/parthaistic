@@ -92,6 +92,56 @@ st.markdown("""
         margin: 1rem 0;
         text-align: center;
     }
+    .target-client-card {
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        border: 2px solid #2196f3;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .similar-client-card {
+        background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+        border: 1px solid #ff9800;
+        border-radius: 15px;
+        padding: 1rem;
+        margin: 0.5rem 0;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .similar-client-card:hover {
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        transform: translateY(-2px);
+    }
+    .similarity-score {
+        background: linear-gradient(135deg, #ff9800, #f57c00);
+        color: white;
+        padding: 0.4rem 1rem;
+        border-radius: 25px;
+        font-weight: bold;
+        font-size: 0.9rem;
+        display: inline-block;
+        margin-bottom: 0.5rem;
+    }
+    .client-info-row {
+        display: flex;
+        justify-content: space-between;
+        margin: 0.3rem 0;
+        font-size: 0.9rem;
+    }
+    .client-info-label {
+        font-weight: 600;
+        color: #555;
+    }
+    .client-info-value {
+        color: #333;
+    }
+    .profiling-section {
+        background: #f8f9fa;
+        border-radius: 15px;
+        padding: 2rem;
+        margin: 1rem 0;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -195,6 +245,73 @@ Gag Nikel,2024,SOE,Company Profile,Short Film,Photographer,
 Yayasan Muda Cemerlang,2025,Corporate,Workshop,,,,
 International Madani Association,2025,Community,Video Editor,,,,"""
     return template_data
+
+# Fungsi untuk mencari klien serupa
+def find_similar_clients(target_client, df, top_n=5):
+    """Mencari klien dengan profil serupa berdasarkan berbagai faktor"""
+    if target_client not in df['Name'].values:
+        return None
+    
+    target_row = df[df['Name'] == target_client].iloc[0]
+    similarities = []
+    
+    for idx, row in df.iterrows():
+        if row['Name'] == target_client:
+            continue
+            
+        similarity_score = 0
+        
+        # 1. Kesamaan Tipe Klien (bobot: 30%)
+        if row['Type'] == target_row['Type']:
+            similarity_score += 30
+        
+        # 2. Kedekatan Tahun (bobot: 20%)
+        year_diff = abs(row['Year'] - target_row['Year'])
+        if year_diff == 0:
+            similarity_score += 20
+        elif year_diff <= 1:
+            similarity_score += 15
+        elif year_diff <= 2:
+            similarity_score += 10
+        elif year_diff <= 3:
+            similarity_score += 5
+        
+        # 3. Kesamaan Layanan (bobot: 30%)
+        target_services = set(target_row['Services'])
+        row_services = set(row['Services'])
+        
+        if target_services and row_services:
+            # Jaccard similarity untuk layanan
+            intersection = len(target_services.intersection(row_services))
+            union = len(target_services.union(row_services))
+            if union > 0:
+                jaccard_similarity = intersection / union
+                similarity_score += jaccard_similarity * 30
+        
+        # 4. Kesamaan Status Loyalitas (bobot: 15%)
+        if row['Is_Loyal'] == target_row['Is_Loyal']:
+            similarity_score += 15
+        
+        # 5. Kesamaan Jumlah Layanan (bobot: 5%)
+        service_count_diff = abs(row['Service_Count'] - target_row['Service_Count'])
+        if service_count_diff == 0:
+            similarity_score += 5
+        elif service_count_diff <= 1:
+            similarity_score += 3
+        
+        similarities.append({
+            'Name': row['Name'],
+            'Similarity_Score': similarity_score,
+            'Type': row['Type'],
+            'Year': row['Year'],
+            'Services': row['Services'],
+            'Is_Loyal': row['Is_Loyal'],
+            'Instagram': row.get('Instagram', ''),
+            'Service_Count': row['Service_Count']
+        })
+    
+    similarities_df = pd.DataFrame(similarities)
+    return similarities_df.nlargest(top_n, 'Similarity_Score')
 
 # Fungsi untuk login Instagram yang dioptimasi
 def instagram_login_optimized(username, password):
@@ -590,10 +707,169 @@ if df is not None:
             st.plotly_chart(fig, use_container_width=True)
 
     with tab2:
-        st.header("🎯 Profiling Klien")
-        st.info("Analisis mendalam tentang karakteristik klien berdasarkan data historis")
+        st.header("🎯 Profiling Klien Tingkat Lanjut")
+        
+        # Container untuk profiling
+        st.markdown('<div class="profiling-section">', unsafe_allow_html=True)
+        
+        # Bagian pencarian klien serupa
+        st.subheader("🔍 Temukan Klien Serupa")
+        st.markdown("Pilih klien untuk menemukan profil serupa berdasarkan tipe, layanan, tahun, dan status loyalitas:")
+        
+        selected_client = st.selectbox(
+            "Pilih klien untuk analisis kesamaan:", 
+            [""] + sorted(df['Name'].tolist()),
+            key="client_similarity_selector"
+        )
+        
+        if selected_client:
+            similar_clients = find_similar_clients(selected_client, df, top_n=5)
+            
+            if similar_clients is not None and len(similar_clients) > 0:
+                col1, col2 = st.columns([1, 2])
+                
+                with col1:
+                    # Target client card
+                    target_info = df[df['Name'] == selected_client].iloc[0]
+                    loyalty_status = "Loyal" if target_info['Is_Loyal'] else "Non-loyal"
+                    instagram_handle = target_info.get('Instagram', 'Tidak ada')
+                    
+                    st.markdown(f"""
+                    <div class="target-client-card">
+                        <h4>📋 Klien Target</h4>
+                        <h3 style="color: #1976d2; margin: 0.5rem 0;">{selected_client}</h3>
+                        <div class="client-info-row">
+                            <span class="client-info-label">Tipe:</span>
+                            <span class="client-info-value">{target_info['Type']}</span>
+                        </div>
+                        <div class="client-info-row">
+                            <span class="client-info-label">Tahun:</span>
+                            <span class="client-info-value">{target_info['Year']}</span>
+                        </div>
+                        <div class="client-info-row">
+                            <span class="client-info-label">Status:</span>
+                            <span class="client-info-value">{loyalty_status}</span>
+                        </div>
+                        <div class="client-info-row">
+                            <span class="client-info-label">Instagram:</span>
+                            <span class="client-info-value">{instagram_handle}</span>
+                        </div>
+                        <div style="margin-top: 1rem;">
+                            <span class="client-info-label">Layanan ({target_info['Service_Count']}):</span><br>
+                            <span class="client-info-value">{', '.join(target_info['Services'])}</span>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    # Similar clients
+                    st.markdown("### 🤝 Klien Paling Serupa")
+                    
+                    for idx, client in similar_clients.iterrows():
+                        similarity_pct = client['Similarity_Score']
+                        loyalty_status = "Loyal" if client['Is_Loyal'] else "Non-loyal"
+                        instagram_handle = client.get('Instagram', 'Tidak ada')
+                        
+                        # Determine similarity level
+                        if similarity_pct >= 70:
+                            similarity_level = "🔥 Sangat Mirip"
+                            card_style = "background: linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 100%); border-color: #4caf50;"
+                        elif similarity_pct >= 50:
+                            similarity_level = "⭐ Cukup Mirip"
+                            card_style = "background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border-color: #ff9800;"
+                        else:
+                            similarity_level = "💡 Sedikit Mirip"
+                            card_style = "background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%); border-color: #9c27b0;"
+                        
+                        st.markdown(f"""
+                        <div class="similar-client-card" style="{card_style}">
+                            <div class="similarity-score">Kesamaan: {similarity_pct:.1f}% - {similarity_level}</div>
+                            <h4 style="margin: 0.5rem 0; color: #e65100;">{client['Name']}</h4>
+                            <div class="client-info-row">
+                                <span class="client-info-label">Tipe:</span>
+                                <span class="client-info-value">{client['Type']}</span>
+                            </div>
+                            <div class="client-info-row">
+                                <span class="client-info-label">Tahun:</span>
+                                <span class="client-info-value">{client['Year']}</span>
+                            </div>
+                            <div class="client-info-row">
+                                <span class="client-info-label">Status:</span>
+                                <span class="client-info-value">{loyalty_status}</span>
+                            </div>
+                            <div class="client-info-row">
+                                <span class="client-info-label">Instagram:</span>
+                                <span class="client-info-value">{instagram_handle}</span>
+                            </div>
+                            <div style="margin-top: 0.5rem;">
+                                <span class="client-info-label">Layanan ({client['Service_Count']}):</span><br>
+                                <span class="client-info-value">{', '.join(client['Services'])}</span>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                
+                # Insights berdasarkan klien serupa
+                st.subheader("💡 Wawasan dari Analisis Kesamaan")
+                
+                # Analisis pola dari klien serupa
+                similar_types = similar_clients['Type'].value_counts()
+                similar_services = []
+                for services in similar_clients['Services']:
+                    similar_services.extend(services)
+                
+                loyalty_rate_similar = (similar_clients['Is_Loyal'].sum() / len(similar_clients)) * 100
+                
+                col_insight1, col_insight2 = st.columns(2)
+                
+                with col_insight1:
+                    st.markdown(f"""
+                    <div class="insight-box">
+                        <h5>📊 Pola Klien Serupa</h5>
+                        <p><strong>Tipe Dominan:</strong> {similar_types.index[0] if len(similar_types) > 0 else 'N/A'}</p>
+                        <p><strong>Tingkat Loyalitas:</strong> {loyalty_rate_similar:.1f}%</p>
+                        <p><strong>Rata-rata Layanan:</strong> {similar_clients['Service_Count'].mean():.1f}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col_insight2:
+                    if similar_services:
+                        top_similar_services = pd.Series(similar_services).value_counts().head(3)
+                        services_text = "<br>".join([f"• {service} ({count}x)" for service, count in top_similar_services.items()])
+                        
+                        st.markdown(f"""
+                        <div class="insight-box">
+                            <h5>🎬 Layanan Populer</h5>
+                            {services_text}
+                        </div>
+                        """, unsafe_allow_html=True)
+            
+            else:
+                st.info("Tidak ditemukan klien yang serupa dengan profil yang dipilih.")
+        
+        else:
+            st.info("""
+            **🎯 Cara Menggunakan Analisis Kesamaan Klien:**
+            
+            1. **Pilih Klien Target** - Pilih dari dropdown klien yang ingin dianalisis
+            2. **Lihat Profil Target** - Review karakteristik klien yang dipilih
+            3. **Analisis Klien Serupa** - Sistem akan menampilkan 5 klien paling mirip
+            4. **Skor Kesamaan** - Berdasarkan tipe, tahun, layanan, dan loyalitas
+            5. **Wawasan Bisnis** - Dapatkan insight untuk strategi marketing
+            
+            **Faktor Penilaian Kesamaan:**
+            - ✅ **Tipe Klien** (30%): Corporate, Figure, Community, dll
+            - ✅ **Kedekatan Tahun** (20%): Periode kerjasama
+            - ✅ **Kesamaan Layanan** (30%): Jenis layanan yang digunakan
+            - ✅ **Status Loyalitas** (15%): Loyal vs Non-loyal
+            - ✅ **Jumlah Layanan** (5%): Kompleksitas kebutuhan
+            
+            **Mulai analisis dengan memilih klien di atas!**
+            """)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
         
         # Analisis layanan populer
+        st.subheader("🎬 Analisis Popularitas Layanan")
         all_services = []
         for services_list in df['Services']:
             all_services.extend(services_list)
@@ -903,7 +1179,7 @@ else:
 st.markdown("---")
 st.markdown("""
 <div style="text-align: center; color: #666;">
-    <p>🎬 Dasbor Analisis Klien Parthaistic | Enhanced CSV Template</p>
-    <p>Versi 7.0 - Complete Data Template with Download Feature</p>
+    <p>🎬 Dasbor Analisis Klien Parthaistic | Enhanced with Client Similarity Feature</p>
+    <p>Versi 8.0 - Complete Client Profiling with Similarity Analysis</p>
 </div>
 """, unsafe_allow_html=True)
