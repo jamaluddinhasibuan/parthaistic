@@ -410,6 +410,55 @@ def search_posts_by_hashtag(cl, hashtag, max_posts=50):
         st.error(f"❌ Error mencari hashtag #{hashtag}: {str(e)}")
         return []
 
+# Fungsi untuk mencari posts berdasarkan kata kunci (menggunakan hashtag populer sebagai proxy)
+def search_posts_by_keywords(cl, keywords, max_posts=50):
+    """Mencari posts berdasarkan kata kunci dengan menggunakan hashtag terkait"""
+    try:
+        # Mapping kata kunci ke hashtag yang relevan
+        keyword_to_hashtags = {
+            'butuh videographer': ['butuhvideographer', 'carivideographer', 'videographerjakarta', 'videojkt'],
+            'cari photographer': ['cariphotographer', 'butuhphotographer', 'photographerjakarta', 'fotojkt'],
+            'video wedding': ['videowedding', 'weddingvideo', 'videopernikahan', 'weddingjakarta'],
+            'dokumentasi event': ['eventdocumentation', 'dokumentasievent', 'eventjakarta', 'dokumentasi'],
+            'company profile': ['companyprofile', 'videoprofile', 'corporatevideo', 'profilperusahaan'],
+            'video promosi': ['videopromosi', 'promotionalvideo', 'videomarketing', 'iklanvideo'],
+            'foto produk': ['fotoproduk', 'productphoto', 'fotografiproduk', 'productphotography'],
+            'content creator': ['contentcreator', 'kontenkreator', 'socialmedia', 'digitalcontent']
+        }
+        
+        # Cari hashtag yang relevan dengan kata kunci
+        relevant_hashtags = []
+        keywords_lower = keywords.lower()
+        
+        for key, hashtags in keyword_to_hashtags.items():
+            if key in keywords_lower or any(word in keywords_lower for word in key.split()):
+                relevant_hashtags.extend(hashtags)
+        
+        # Jika tidak ada hashtag yang cocok, gunakan kata kunci langsung
+        if not relevant_hashtags:
+            # Bersihkan kata kunci dan ubah jadi hashtag
+            clean_keywords = re.sub(r'[^\w\s]', '', keywords_lower)
+            hashtag_from_keywords = clean_keywords.replace(' ', '')
+            relevant_hashtags = [hashtag_from_keywords]
+        
+        all_posts = []
+        
+        # Cari posts dari setiap hashtag yang relevan
+        for hashtag in relevant_hashtags[:3]:  # Maksimal 3 hashtag untuk menghindari rate limit
+            try:
+                posts = search_posts_by_hashtag(cl, hashtag, max_posts // len(relevant_hashtags[:3]))
+                if posts:
+                    all_posts.extend(posts)
+                time.sleep(random.uniform(2, 3))  # Delay antar hashtag
+            except Exception:
+                continue
+        
+        return all_posts[:max_posts]
+        
+    except Exception as e:
+        st.error(f"❌ Error mencari dengan kata kunci '{keywords}': {str(e)}")
+        return []
+
 # Fungsi untuk mendapatkan posts dari user
 def get_user_posts(cl, user_id, max_posts=20):
     """Mendapatkan posts terbaru dari user"""
@@ -433,26 +482,29 @@ def analyze_post_content(post):
             'video marketing', 'video promosi', 'video company profile',
             'video dokumentasi', 'video event', 'video wedding', 'video prewedding',
             'video commercial', 'video iklan', 'video product', 'cinematic video',
-            'video shoot', 'video production', 'videografi'
+            'video shoot', 'video production', 'videografi', 'butuh videographer',
+            'cari videographer', 'videographer jakarta', 'videographer indonesia'
         ],
         'photography': [
             'butuh foto', 'cari photographer', 'need photo', 'foto produk',
             'foto wedding', 'foto prewedding', 'foto maternity', 'foto family',
             'foto corporate', 'foto headshot', 'foto profile', 'foto event',
             'foto dokumentasi', 'foto commercial', 'photoshoot', 'photography',
-            'fotografer', 'potret'
+            'fotografer', 'potret', 'butuh photographer', 'cari photographer',
+            'photographer jakarta', 'photographer indonesia'
         ],
         'content_creation': [
             'content creator', 'konten kreator', 'social media content',
             'instagram content', 'tiktok content', 'youtube content',
             'digital marketing', 'social media marketing', 'brand content',
-            'creative content', 'konten kreatif'
+            'creative content', 'konten kreatif', 'butuh content', 'cari content creator'
         ],
         'business_needs': [
             'company profile', 'profil perusahaan', 'corporate video',
             'business video', 'promotional video', 'marketing material',
             'brand awareness', 'product launch', 'event coverage',
-            'launching produk', 'promosi bisnis'
+            'launching produk', 'promosi bisnis', 'video perusahaan',
+            'dokumentasi perusahaan'
         ]
     }
     
@@ -473,7 +525,8 @@ def analyze_post_content(post):
     hashtag_keywords = [
         'video', 'foto', 'photography', 'videography', 'content', 'marketing',
         'wedding', 'prewedding', 'event', 'corporate', 'business', 'produk',
-        'commercial', 'cinematic', 'photoshoot', 'videoshoot'
+        'commercial', 'cinematic', 'photoshoot', 'videoshoot', 'butuh', 'cari',
+        'need', 'dokumentasi', 'promosi', 'profile', 'company'
     ]
     
     for hashtag in hashtags:
@@ -481,6 +534,17 @@ def analyze_post_content(post):
         if any(keyword in hashtag_clean for keyword in hashtag_keywords):
             relevant_hashtags.append(hashtag)
             confidence_score += 5
+    
+    # Boost confidence untuk kata kunci prioritas tinggi
+    high_priority_keywords = [
+        'butuh video', 'cari videographer', 'butuh foto', 'cari photographer',
+        'need video', 'need photo', 'video wedding', 'foto wedding',
+        'company profile', 'video promosi', 'foto produk'
+    ]
+    
+    for keyword in high_priority_keywords:
+        if keyword in caption:
+            confidence_score += 15
     
     return {
         'needs': detected_needs,
@@ -1446,103 +1510,115 @@ if df is not None:
                                     
                                     posts = search_posts_by_hashtag(st.session_state.instagram_client, search_query, max_posts)
                                     
-                                    if posts:
-                                        total_posts = len(posts)
-                                        status_text.text(f"Menganalisis {total_posts} posts...")
-                                        
-                                        analyzed_users = set()  # Untuk menghindari duplikasi user
-                                        
-                                        for idx, post in enumerate(posts):
-                                            if found_count >= max_results_post:
-                                                break
-                                            
-                                            progress_bar.progress(0.1 + (idx / total_posts) * 0.9)
-                                            
-                                            try:
-                                                user_id = getattr(post, 'user', {}).pk if hasattr(getattr(post, 'user', {}), 'pk') else None
-                                                
-                                                if user_id and user_id not in analyzed_users:
-                                                    analyzed_users.add(user_id)
-                                                    
-                                                    # Analisis konten post
-                                                    post_analysis = analyze_post_content(post)
-                                                    
-                                                    if post_analysis['confidence'] >= 20:  # Threshold minimal untuk post
-                                                        # Dapatkan detail user
-                                                        user_details = get_user_details_optimized(st.session_state.instagram_client, user_id)
-                                                        
-                                                        if user_details:
-                                                            follower_count = getattr(user_details, 'follower_count', 0)
-                                                            
-                                                            # Filter berdasarkan followers dan lokasi Indonesia
-                                                            if follower_count >= min_followers_post and is_indonesian_user(user_details):
-                                                                
-                                                                # Dapatkan lebih banyak posts dari user untuk analisis yang lebih komprehensif
-                                                                user_posts = get_user_posts(st.session_state.instagram_client, user_id, 10)
-                                                                
-                                                                # Analisis semua posts user
-                                                                post_analyses = [analyze_post_content(p) for p in user_posts[:5]]  # Analisis 5 post terakhir
-                                                                post_analyses = [pa for pa in post_analyses if pa['confidence'] > 0]
-                                                                
-                                                                if post_analyses:
-                                                                    # Hitung skor berdasarkan posts
-                                                                    potential_score = calculate_post_based_score(
-                                                                        user_details, post_analyses, follower_count
-                                                                    )
-                                                                    
-                                                                    if potential_score >= 25:  # Threshold untuk post-based search
-                                                                        # Gabungkan semua kebutuhan yang terdeteksi
-                                                                        all_needs = []
-                                                                        all_hashtags = []
-                                                                        all_relevant_hashtags = []
-                                                                        sample_captions = []
-                                                                        
-                                                                        for pa in post_analyses:
-                                                                            all_needs.extend(pa['needs'])
-                                                                            all_hashtags.extend(pa['hashtags'])
-                                                                            all_relevant_hashtags.extend(pa['relevant_hashtags'])
-                                                                            if pa['caption_excerpt']:
-                                                                                sample_captions.append(pa['caption_excerpt'])
-                                                                        
-                                                                        unique_needs = list(set(all_needs))
-                                                                        unique_hashtags = list(set(all_hashtags))
-                                                                        unique_relevant_hashtags = list(set(all_relevant_hashtags))
-                                                                        
-                                                                        avg_confidence = sum(pa['confidence'] for pa in post_analyses) / len(post_analyses)
-                                                                        
-                                                                        st.session_state.post_search_results.append({
-                                                                            'username': getattr(user_details, 'username', 'N/A'),
-                                                                            'full_name': getattr(user_details, 'full_name', 'N/A'),
-                                                                            'follower_count': follower_count,
-                                                                            'biography': getattr(user_details, 'biography', ''),
-                                                                            'needs': unique_needs,
-                                                                            'avg_confidence': avg_confidence,
-                                                                            'potential_score': potential_score,
-                                                                            'is_verified': getattr(user_details, 'is_verified', False),
-                                                                            'is_business': getattr(user_details, 'is_business', False),
-                                                                            'hashtags': unique_hashtags[:10],  # Maksimal 10 hashtag
-                                                                            'relevant_hashtags': unique_relevant_hashtags,
-                                                                            'sample_captions': sample_captions[:3],  # Maksimal 3 contoh caption
-                                                                            'posts_analyzed': len(post_analyses)
-                                                                        })
-                                                                        found_count += 1
-                                                                        status_text.text(f"Ditemukan {found_count} calon klien dari analisis posts")
-                                                
-                                                time.sleep(random.uniform(0.5, 1.5))  # Delay untuk menghindari rate limit
-                                                
-                                            except Exception:
-                                                continue
-                                        
-                                        progress_bar.progress(1.0)
-                                        status_text.text(f"✅ Analisis selesai! Ditemukan {found_count} calon klien berdasarkan posts")
+                                else:
+                                    # Pencarian berdasarkan kata kunci dalam caption
+                                    status_text.text(f"Mencari posts dengan kata kunci: '{search_query}'...")
+                                    progress_bar.progress(0.1)
                                     
-                                    else:
-                                        st.warning(f"Tidak ditemukan posts dengan hashtag #{search_query}")
+                                    posts = search_posts_by_keywords(st.session_state.instagram_client, search_query, max_posts)
+                                
+                                if posts:
+                                    total_posts = len(posts)
+                                    status_text.text(f"Menganalisis {total_posts} posts...")
+                                    
+                                    analyzed_users = set()  # Untuk menghindari duplikasi user
+                                    
+                                    for idx, post in enumerate(posts):
+                                        if found_count >= max_results_post:
+                                            break
+                                        
+                                        progress_bar.progress(0.1 + (idx / total_posts) * 0.9)
+                                        
+                                        try:
+                                            # Dapatkan user ID dari post
+                                            user_id = None
+                                            if hasattr(post, 'user'):
+                                                if hasattr(post.user, 'pk'):
+                                                    user_id = post.user.pk
+                                                elif hasattr(post.user, 'id'):
+                                                    user_id = post.user.id
+                                            
+                                            if user_id and user_id not in analyzed_users:
+                                                analyzed_users.add(user_id)
+                                                
+                                                # Analisis konten post
+                                                post_analysis = analyze_post_content(post)
+                                                
+                                                if post_analysis['confidence'] >= 20:  # Threshold minimal untuk post
+                                                    # Dapatkan detail user
+                                                    user_details = get_user_details_optimized(st.session_state.instagram_client, user_id)
+                                                    
+                                                    if user_details:
+                                                        follower_count = getattr(user_details, 'follower_count', 0)
+                                                        
+                                                        # Filter berdasarkan followers dan lokasi Indonesia
+                                                        if follower_count >= min_followers_post and is_indonesian_user(user_details):
+                                                            
+                                                            # Dapatkan lebih banyak posts dari user untuk analisis yang lebih komprehensif
+                                                            user_posts = get_user_posts(st.session_state.instagram_client, user_id, 10)
+                                                            
+                                                            # Analisis semua posts user
+                                                            post_analyses = [analyze_post_content(p) for p in user_posts[:5]]  # Analisis 5 post terakhir
+                                                            post_analyses = [pa for pa in post_analyses if pa['confidence'] > 0]
+                                                            
+                                                            if post_analyses:
+                                                                # Hitung skor berdasarkan posts
+                                                                potential_score = calculate_post_based_score(
+                                                                    user_details, post_analyses, follower_count
+                                                                )
+                                                                
+                                                                if potential_score >= 25:  # Threshold untuk post-based search
+                                                                    # Gabungkan semua kebutuhan yang terdeteksi
+                                                                    all_needs = []
+                                                                    all_hashtags = []
+                                                                    all_relevant_hashtags = []
+                                                                    sample_captions = []
+                                                                    
+                                                                    for pa in post_analyses:
+                                                                        all_needs.extend(pa['needs'])
+                                                                        all_hashtags.extend(pa['hashtags'])
+                                                                        all_relevant_hashtags.extend(pa['relevant_hashtags'])
+                                                                        if pa['caption_excerpt']:
+                                                                            sample_captions.append(pa['caption_excerpt'])
+                                                                    
+                                                                    unique_needs = list(set(all_needs))
+                                                                    unique_hashtags = list(set(all_hashtags))
+                                                                    unique_relevant_hashtags = list(set(all_relevant_hashtags))
+                                                                    
+                                                                    avg_confidence = sum(pa['confidence'] for pa in post_analyses) / len(post_analyses)
+                                                                    
+                                                                    st.session_state.post_search_results.append({
+                                                                        'username': getattr(user_details, 'username', 'N/A'),
+                                                                        'full_name': getattr(user_details, 'full_name', 'N/A'),
+                                                                        'follower_count': follower_count,
+                                                                        'biography': getattr(user_details, 'biography', ''),
+                                                                        'needs': unique_needs,
+                                                                        'avg_confidence': avg_confidence,
+                                                                        'potential_score': potential_score,
+                                                                        'is_verified': getattr(user_details, 'is_verified', False),
+                                                                        'is_business': getattr(user_details, 'is_business', False),
+                                                                        'hashtags': unique_hashtags[:10],  # Maksimal 10 hashtag
+                                                                        'relevant_hashtags': unique_relevant_hashtags,
+                                                                        'sample_captions': sample_captions[:3],  # Maksimal 3 contoh caption
+                                                                        'posts_analyzed': len(post_analyses)
+                                                                    })
+                                                                    found_count += 1
+                                                                    status_text.text(f"Ditemukan {found_count} calon klien dari analisis posts")
+                                            
+                                            time.sleep(random.uniform(0.5, 1.5))  # Delay untuk menghindari rate limit
+                                            
+                                        except Exception as e:
+                                            # Log error untuk debugging tapi lanjutkan proses
+                                            continue
+                                    
+                                    progress_bar.progress(1.0)
+                                    status_text.text(f"✅ Analisis selesai! Ditemukan {found_count} calon klien berdasarkan posts")
                                 
                                 else:
-                                    # Untuk pencarian berdasarkan caption, kita perlu menggunakan pendekatan yang berbeda
-                                    # Karena Instagram API tidak mendukung pencarian caption secara langsung
-                                    st.info("Pencarian berdasarkan kata kunci caption sedang dalam pengembangan. Silakan gunakan pencarian hashtag untuk saat ini.")
+                                    if search_method == "Hashtag":
+                                        st.warning(f"Tidak ditemukan posts dengan hashtag #{search_query}")
+                                    else:
+                                        st.warning(f"Tidak ditemukan posts dengan kata kunci '{search_query}'")
                                     
                             except Exception as e:
                                 st.error(f"Error saat pencarian posts: {str(e)}")
@@ -1684,6 +1760,12 @@ if df is not None:
                 - `#contentcreator` - Target content creator
                 - `#companyprofile` - Target perusahaan
                 
+                ### 💬 **Contoh Kata Kunci Caption:**
+                - `butuh videographer` - Mencari yang secara eksplisit butuh videographer
+                - `cari photographer` - Mencari yang butuh photographer
+                - `video wedding` - Target yang membutuhkan video wedding
+                - `company profile` - Target perusahaan yang butuh company profile
+                
                 ### 💡 **Tips Pencarian:**
                 - Gunakan hashtag spesifik untuk hasil yang lebih relevan
                 - Coba variasi kata kunci untuk jangkauan yang lebih luas
@@ -1705,6 +1787,6 @@ st.markdown("---")
 st.markdown("""
 <div style="text-align: center; color: #666;">
     <p>🎬 Dasbor Analisis Klien Parthaistic | Enhanced with Post & Hashtag Search</p>
-    <p>Versi 9.0 - Complete Client Analysis with Advanced Post-based Discovery</p>
+    <p>Versi 10.0 - Complete Client Analysis with Advanced Post-based Discovery & Keyword Search</p>
 </div>
 """, unsafe_allow_html=True)
