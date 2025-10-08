@@ -178,6 +178,30 @@ st.markdown("""
         margin: 0.2rem;
         display: inline-block;
     }
+    .bio-search-card {
+        background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+        border: 2px solid #9c27b0;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .bio-indicator {
+        background: #9c27b0;
+        color: white;
+        padding: 0.3rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        margin: 0.2rem;
+        display: inline-block;
+    }
+    .search-method-card {
+        background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+        border: 1px solid #ffc107;
+        border-radius: 10px;
+        padding: 1rem;
+        margin: 0.5rem 0;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -387,6 +411,105 @@ def search_instagram_users_optimized(cl, query, max_results=30):
     except Exception as e:
         st.error(f"❌ Pencarian gagal: {str(e)}")
         return []
+
+# Fungsi untuk mencari berdasarkan bio
+def search_users_by_bio_keywords(cl, bio_keywords, max_users=100):
+    """Mencari users berdasarkan kata kunci dalam bio"""
+    try:
+        # Strategi: gunakan kata kunci sebagai query pencarian
+        # kemudian filter berdasarkan bio
+        all_users = []
+        
+        # Buat variasi query dari bio keywords
+        search_queries = []
+        
+        # Split bio keywords menjadi kata-kata individual
+        keywords = bio_keywords.lower().split()
+        
+        # Tambahkan query utama
+        search_queries.append(bio_keywords)
+        
+        # Tambahkan kata kunci individual yang penting
+        important_keywords = [kw for kw in keywords if len(kw) >= 4 and kw not in ['yang', 'dan', 'atau', 'untuk', 'dari', 'dengan', 'pada', 'dalam']]
+        search_queries.extend(important_keywords[:3])  # Maksimal 3 kata kunci tambahan
+        
+        found_users = set()  # Untuk menghindari duplikasi
+        
+        for query in search_queries[:4]:  # Maksimal 4 query untuk menghindari rate limit
+            try:
+                time.sleep(random.uniform(1, 2))
+                users = search_instagram_users_optimized(cl, query, max_users // len(search_queries[:4]))
+                
+                for user in users:
+                    user_id = getattr(user, 'pk', None) or getattr(user, 'id', None)
+                    if user_id and user_id not in found_users:
+                        found_users.add(user_id)
+                        all_users.append(user)
+                
+                if len(all_users) >= max_users:
+                    break
+                    
+            except Exception:
+                continue
+        
+        return all_users[:max_users]
+        
+    except Exception as e:
+        st.error(f"❌ Error pencarian bio: {str(e)}")
+        return []
+
+# Fungsi untuk menganalisis kecocokan bio
+def analyze_bio_match(user_details, target_keywords):
+    """Menganalisis seberapa cocok bio user dengan kata kunci target"""
+    if not user_details:
+        return 0, []
+    
+    bio = (getattr(user_details, 'biography', '') or "").lower()
+    username = getattr(user_details, 'username', '').lower()
+    full_name = (getattr(user_details, 'full_name', '') or "").lower()
+    
+    # Gabungkan semua teks untuk analisis
+    all_text = f"{bio} {username} {full_name}"
+    
+    # Bersihkan dan split target keywords
+    target_keywords_clean = target_keywords.lower()
+    target_words = re.findall(r'\b\w+\b', target_keywords_clean)
+    
+    matched_keywords = []
+    match_score = 0
+    
+    # Cek exact phrase match (skor tinggi)
+    if target_keywords_clean in all_text:
+        match_score += 50
+        matched_keywords.append(f"Exact: '{target_keywords}'")
+    
+    # Cek individual keyword matches
+    for word in target_words:
+        if len(word) >= 3:  # Hanya kata dengan minimal 3 karakter
+            if word in all_text:
+                match_score += 10
+                matched_keywords.append(word)
+    
+    # Bonus untuk kata kunci yang relevan dengan layanan Parthaistic
+    service_keywords = {
+        'video': 15, 'videographer': 20, 'videografi': 20,
+        'foto': 15, 'photographer': 20, 'fotografi': 20, 'photography': 20,
+        'content': 12, 'creator': 12, 'konten': 12, 'kreator': 12,
+        'wedding': 15, 'nikah': 15, 'pernikahan': 15,
+        'event': 10, 'acara': 10, 'dokumentasi': 15,
+        'bisnis': 10, 'business': 10, 'perusahaan': 12, 'company': 12,
+        'marketing': 10, 'promosi': 10, 'iklan': 10,
+        'cinematic': 15, 'sinematik': 15,
+        'commercial': 12, 'komersial': 12
+    }
+    
+    for keyword, bonus in service_keywords.items():
+        if keyword in all_text:
+            match_score += bonus
+            if keyword not in matched_keywords:
+                matched_keywords.append(f"Service: {keyword}")
+    
+    return min(match_score, 100), matched_keywords
 
 # Fungsi untuk mendapatkan detail pengguna
 def get_user_details_optimized(cl, user_id):
@@ -711,6 +834,42 @@ def calculate_client_potential_score(user_details, needs, need_confidence, follo
 
     return min(int(base_score), 100)
 
+# Fungsi untuk menghitung skor berdasarkan bio match
+def calculate_bio_based_score(user_details, bio_match_score, matched_keywords, follower_count):
+    """Menghitung skor potensi klien berdasarkan kecocokan bio"""
+    base_score = 0
+
+    # Skor berdasarkan followers (minimal 1000 untuk bio-based search)
+    if follower_count >= 50000:
+        base_score += 25
+    elif follower_count >= 10000:
+        base_score += 20
+    elif follower_count >= 5000:
+        base_score += 15
+    elif follower_count >= 1000:
+        base_score += 10
+    else:
+        return 0  # Tidak memenuhi kriteria minimal
+
+    # Skor berdasarkan kecocokan bio (maksimal 40 poin)
+    base_score += min(bio_match_score * 0.4, 40)
+
+    # Bonus untuk jumlah kata kunci yang cocok
+    base_score += min(len(matched_keywords) * 3, 15)
+
+    # Skor berdasarkan jenis akun
+    if getattr(user_details, 'is_business', False):
+        base_score += 10
+    if getattr(user_details, 'is_verified', False):
+        base_score += 5
+
+    # Bonus untuk bio yang lengkap
+    bio = getattr(user_details, 'biography', '') or ""
+    if len(bio) > 50:
+        base_score += 5
+
+    return min(int(base_score), 100)
+
 # Inisialisasi session state
 if 'instagram_logged_in' not in st.session_state:
     st.session_state.instagram_logged_in = False
@@ -722,6 +881,8 @@ if 'search_results' not in st.session_state:
     st.session_state.search_results = []
 if 'post_search_results' not in st.session_state:
     st.session_state.post_search_results = []
+if 'bio_search_results' not in st.session_state:
+    st.session_state.bio_search_results = []
 
 # Sidebar login Instagram
 with st.sidebar:
@@ -753,6 +914,7 @@ with st.sidebar:
             st.session_state.instagram_username = ""
             st.session_state.search_results = []
             st.session_state.post_search_results = []
+            st.session_state.bio_search_results = []
             st.rerun()
 
 # Header utama
@@ -1194,118 +1356,263 @@ if df is not None:
             </div>
             """, unsafe_allow_html=True)
             
-            # Form pencarian sederhana
-            with st.container():
-                st.markdown('<div class="search-box">', unsafe_allow_html=True)
-                
-                col1, col2 = st.columns([2, 1])
-                
-                with col1:
-                    # Pilihan kata kunci pencarian
-                    search_options = [
-                        "butuh videographer jakarta",
-                        "cari photographer indonesia", 
-                        "video wedding indonesia",
-                        "content creator indonesia",
-                        "startup indonesia",
-                        "business jakarta",
-                        "company profile video",
-                        "foto produk jakarta"
-                    ]
-                    
-                    selected_keyword = st.selectbox("🔍 Pilih kata kunci pencarian:", search_options)
-                    custom_keyword = st.text_input("🔍 Atau masukkan kata kunci sendiri:", 
-                                                 placeholder="contoh: dokter jakarta butuh video")
-                    
-                    search_query = custom_keyword if custom_keyword else selected_keyword
-                
-                with col2:
-                    st.markdown("**Filter:**")
-                    min_followers = st.number_input("Min. Followers:", min_value=2000, max_value=100000, value=2000, step=1000)
-                    max_results = st.number_input("Max. Hasil:", min_value=5, max_value=20, value=10)
-                
-                st.markdown('</div>', unsafe_allow_html=True)
-                
-                # Tombol pencarian
-                if st.button("🚀 Mulai Pencarian Profil", type="primary", use_container_width=True):
-                    if search_query:
-                        with st.spinner(f"Mencari calon klien dengan kata kunci: '{search_query}'"):
-                            progress_bar = st.progress(0)
-                            status_text = st.empty()
-                            
-                            st.session_state.search_results = []
-                            found_count = 0
-                            
-                            try:
-                                # Cari users
-                                status_text.text("Mencari pengguna Instagram...")
-                                progress_bar.progress(0.2)
-                                
-                                users = search_instagram_users_optimized(st.session_state.instagram_client, search_query, 50)
-                                
-                                if users:
-                                    total_users = len(users)
-                                    
-                                    for idx, user in enumerate(users):
-                                        if found_count >= max_results:
-                                            break
-                                        
-                                        progress_bar.progress(0.2 + (idx / total_users) * 0.8)
-                                        username = getattr(user, 'username', 'unknown')
-                                        status_text.text(f"Menganalisis @{username}...")
-                                        
-                                        try:
-                                            user_details = get_user_details_optimized(st.session_state.instagram_client, user.pk)
-                                            
-                                            if user_details:
-                                                follower_count = getattr(user_details, 'follower_count', 0)
-                                                
-                                                # Filter: minimal followers dan lokasi Indonesia
-                                                if follower_count >= min_followers and is_indonesian_user(user_details):
-                                                    
-                                                    # Deteksi kebutuhan
-                                                    needs, need_confidence = detect_video_photo_needs(user_details)
-                                                    
-                                                    # Hitung skor potensi
-                                                    potential_score = calculate_client_potential_score(
-                                                        user_details, needs, need_confidence, follower_count
-                                                    )
-                                                    
-                                                    # Simpan jika memenuhi kriteria
-                                                    if potential_score >= 20:  # Threshold minimal
-                                                        st.session_state.search_results.append({
-                                                            'username': getattr(user_details, 'username', 'N/A'),
-                                                            'full_name': getattr(user_details, 'full_name', 'N/A'),
-                                                            'follower_count': follower_count,
-                                                            'biography': getattr(user_details, 'biography', ''),
-                                                            'needs': needs,
-                                                            'need_confidence': need_confidence,
-                                                            'potential_score': potential_score,
-                                                            'is_verified': getattr(user_details, 'is_verified', False),
-                                                            'is_business': getattr(user_details, 'is_business', False)
-                                                        })
-                                                        found_count += 1
-                                                        status_text.text(f"Ditemukan {found_count} calon klien potensial")
-                                            
-                                            time.sleep(random.uniform(1, 2))  # Delay untuk menghindari rate limit
-                                            
-                                        except Exception:
-                                            continue
-                                    
-                                    progress_bar.progress(1.0)
-                                    status_text.text(f"✅ Pencarian selesai! Ditemukan {found_count} calon klien")
-                                
-                                else:
-                                    st.warning("Tidak ditemukan pengguna dengan kata kunci tersebut")
-                                    
-                            except Exception as e:
-                                st.error(f"Error saat pencarian: {str(e)}")
-                    else:
-                        st.warning("Pilih atau masukkan kata kunci pencarian")
+            # Pilihan metode pencarian
+            st.subheader("🔍 Pilih Metode Pencarian")
             
-            # Tampilkan hasil pencarian
+            search_method = st.radio(
+                "Metode pencarian profil:",
+                ["Username/Nama", "Bio Keywords"],
+                help="Pilih metode pencarian: berdasarkan username/nama atau berdasarkan kata kunci dalam bio"
+            )
+            
+            if search_method == "Username/Nama":
+                # Form pencarian berdasarkan username/nama (existing)
+                with st.container():
+                    st.markdown('<div class="search-box">', unsafe_allow_html=True)
+                    st.markdown("""
+                    <div class="search-method-card">
+                        <h5>👤 Pencarian Berdasarkan Username/Nama</h5>
+                        <p>Mencari berdasarkan username atau nama profil Instagram</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    col1, col2 = st.columns([2, 1])
+                    
+                    with col1:
+                        # Pilihan kata kunci pencarian
+                        search_options = [
+                            "rosa",
+                            "budi", 
+                            "ani",
+                            "food vlogger",
+                            "travel blogger",
+                            "fashion influencer",
+                        ]
+                        
+                        selected_keyword = st.selectbox("🔍 Pilih kata kunci pencarian:", search_options)
+                        custom_keyword = st.text_input("🔍 Atau masukkan kata kunci sendiri:", 
+                                                     placeholder="contoh: dokter, dj, food, nia, etc.")
+                        
+                        search_query = custom_keyword if custom_keyword else selected_keyword
+                    
+                    with col2:
+                        st.markdown("**Filter:**")
+                        min_followers = st.number_input("Min. Followers:", min_value=2000, max_value=100000, value=2000, step=1000)
+                        max_results = st.number_input("Max. Hasil:", min_value=5, max_value=20, value=10)
+                    
+                    st.markdown('</div>', unsafe_allow_html=True)
+                    
+                    # Tombol pencarian
+                    if st.button("🚀 Mulai Pencarian Username/Nama", type="primary", use_container_width=True):
+                        if search_query:
+                            with st.spinner(f"Mencari calon klien dengan kata kunci: '{search_query}'"):
+                                progress_bar = st.progress(0)
+                                status_text = st.empty()
+                                
+                                st.session_state.search_results = []
+                                found_count = 0
+                                
+                                try:
+                                    # Cari users
+                                    status_text.text("Mencari pengguna Instagram...")
+                                    progress_bar.progress(0.2)
+                                    
+                                    users = search_instagram_users_optimized(st.session_state.instagram_client, search_query, 50)
+                                    
+                                    if users:
+                                        total_users = len(users)
+                                        
+                                        for idx, user in enumerate(users):
+                                            if found_count >= max_results:
+                                                break
+                                            
+                                            progress_bar.progress(0.2 + (idx / total_users) * 0.8)
+                                            username = getattr(user, 'username', 'unknown')
+                                            status_text.text(f"Menganalisis @{username}...")
+                                            
+                                            try:
+                                                user_details = get_user_details_optimized(st.session_state.instagram_client, user.pk)
+                                                
+                                                if user_details:
+                                                    follower_count = getattr(user_details, 'follower_count', 0)
+                                                    
+                                                    # Filter: minimal followers dan lokasi Indonesia
+                                                    if follower_count >= min_followers and is_indonesian_user(user_details):
+                                                        
+                                                        # Deteksi kebutuhan
+                                                        needs, need_confidence = detect_video_photo_needs(user_details)
+                                                        
+                                                        # Hitung skor potensi
+                                                        potential_score = calculate_client_potential_score(
+                                                            user_details, needs, need_confidence, follower_count
+                                                        )
+                                                        
+                                                        # Simpan jika memenuhi kriteria
+                                                        if potential_score >= 20:  # Threshold minimal
+                                                            st.session_state.search_results.append({
+                                                                'username': getattr(user_details, 'username', 'N/A'),
+                                                                'full_name': getattr(user_details, 'full_name', 'N/A'),
+                                                                'follower_count': follower_count,
+                                                                'biography': getattr(user_details, 'biography', ''),
+                                                                'needs': needs,
+                                                                'need_confidence': need_confidence,
+                                                                'potential_score': potential_score,
+                                                                'is_verified': getattr(user_details, 'is_verified', False),
+                                                                'is_business': getattr(user_details, 'is_business', False),
+                                                                'search_method': 'Username/Nama'
+                                                            })
+                                                            found_count += 1
+                                                            status_text.text(f"Ditemukan {found_count} calon klien potensial")
+                                                
+                                                time.sleep(random.uniform(1, 2))  # Delay untuk menghindari rate limit
+                                                
+                                            except Exception:
+                                                continue
+                                        
+                                        progress_bar.progress(1.0)
+                                        status_text.text(f"✅ Pencarian selesai! Ditemukan {found_count} calon klien")
+                                    
+                                    else:
+                                        st.warning("Tidak ditemukan pengguna dengan kata kunci tersebut")
+                                        
+                                except Exception as e:
+                                    st.error(f"Error saat pencarian: {str(e)}")
+                        else:
+                            st.warning("Pilih atau masukkan kata kunci pencarian")
+            
+            else:  # Bio Keywords
+                # Form pencarian berdasarkan bio keywords (NEW)
+                with st.container():
+                    st.markdown('<div class="bio-search-card">', unsafe_allow_html=True)
+                    st.markdown("""
+                    <h5>📝 Pencarian Berdasarkan Bio Keywords</h5>
+                    <p>Mencari calon klien berdasarkan kata kunci yang ada dalam bio Instagram mereka. 
+                    Metode ini lebih akurat untuk menemukan orang yang benar-benar membutuhkan layanan video/foto.</p>
+                    """, unsafe_allow_html=True)
+                    
+                    col1, col2 = st.columns([2, 1])
+                    
+                    with col1:
+                        # Pilihan kata kunci bio
+                        bio_search_options = [
+                            "butuh videographer",
+                            "cari photographer", 
+                            "video wedding",
+                            "content creator",
+                            "wedding organizer",
+                            "event organizer",
+                            "bisnis owner",
+                            "entrepreneur",
+                            "startup founder",
+                            "marketing manager",
+                            "brand owner",
+                            "food blogger",
+                            "travel blogger",
+                            "fashion blogger",
+                            "beauty blogger",
+                            "lifestyle blogger"
+                        ]
+                        
+                        selected_bio_keyword = st.selectbox("🔍 Pilih kata kunci bio:", bio_search_options)
+                        custom_bio_keyword = st.text_input("🔍 Atau masukkan kata kunci bio sendiri:", 
+                                                         placeholder="contoh: wedding planner, digital agency, dll")
+                        
+                        bio_search_query = custom_bio_keyword if custom_bio_keyword else selected_bio_keyword
+                        
+                        st.info(f"💡 **Tips**: Kata kunci '{bio_search_query}' akan dicari dalam bio, username, dan nama profil Instagram")
+                    
+                    with col2:
+                        st.markdown("**Filter Bio Search:**")
+                        min_followers_bio = st.number_input("Min. Followers:", min_value=1000, max_value=100000, value=1000, step=500, key="bio_min_followers")
+                        max_results_bio = st.number_input("Max. Hasil:", min_value=5, max_value=15, value=8, key="bio_max_results")
+                        max_search_users = st.number_input("Max. Users Dicari:", min_value=50, max_value=200, value=100, step=25, key="bio_max_search", 
+                                                         help="Jumlah maksimal user yang akan dicari dan dianalisis")
+                    
+                    st.markdown('</div>', unsafe_allow_html=True)
+                    
+                    # Tombol pencarian bio
+                    if st.button("🚀 Mulai Pencarian Bio Keywords", type="primary", use_container_width=True):
+                        if bio_search_query:
+                            with st.spinner(f"Mencari calon klien dengan bio keywords: '{bio_search_query}'"):
+                                progress_bar = st.progress(0)
+                                status_text = st.empty()
+                                
+                                st.session_state.bio_search_results = []
+                                found_count = 0
+                                
+                                try:
+                                    # Cari users berdasarkan bio keywords
+                                    status_text.text("Mencari pengguna berdasarkan bio keywords...")
+                                    progress_bar.progress(0.1)
+                                    
+                                    users = search_users_by_bio_keywords(st.session_state.instagram_client, bio_search_query, max_search_users)
+                                    
+                                    if users:
+                                        total_users = len(users)
+                                        status_text.text(f"Menganalisis {total_users} pengguna...")
+                                        
+                                        for idx, user in enumerate(users):
+                                            if found_count >= max_results_bio:
+                                                break
+                                            
+                                            progress_bar.progress(0.1 + (idx / total_users) * 0.9)
+                                            username = getattr(user, 'username', 'unknown')
+                                            status_text.text(f"Menganalisis bio @{username}...")
+                                            
+                                            try:
+                                                user_details = get_user_details_optimized(st.session_state.instagram_client, user.pk)
+                                                
+                                                if user_details:
+                                                    follower_count = getattr(user_details, 'follower_count', 0)
+                                                    
+                                                    # Filter: minimal followers dan lokasi Indonesia
+                                                    if follower_count >= min_followers_bio and is_indonesian_user(user_details):
+                                                        
+                                                        # Analisis kecocokan bio
+                                                        bio_match_score, matched_keywords = analyze_bio_match(user_details, bio_search_query)
+                                                        
+                                                        # Hitung skor potensi berdasarkan bio
+                                                        potential_score = calculate_bio_based_score(
+                                                            user_details, bio_match_score, matched_keywords, follower_count
+                                                        )
+                                                        
+                                                        # Simpan jika memenuhi kriteria
+                                                        if potential_score >= 25 and bio_match_score >= 20:  # Threshold untuk bio search
+                                                            st.session_state.bio_search_results.append({
+                                                                'username': getattr(user_details, 'username', 'N/A'),
+                                                                'full_name': getattr(user_details, 'full_name', 'N/A'),
+                                                                'follower_count': follower_count,
+                                                                'biography': getattr(user_details, 'biography', ''),
+                                                                'bio_match_score': bio_match_score,
+                                                                'matched_keywords': matched_keywords,
+                                                                'potential_score': potential_score,
+                                                                'is_verified': getattr(user_details, 'is_verified', False),
+                                                                'is_business': getattr(user_details, 'is_business', False),
+                                                                'search_method': 'Bio Keywords',
+                                                                'search_query': bio_search_query
+                                                            })
+                                                            found_count += 1
+                                                            status_text.text(f"Ditemukan {found_count} calon klien dari bio analysis")
+                                                
+                                                time.sleep(random.uniform(1, 2))  # Delay untuk menghindari rate limit
+                                                
+                                            except Exception:
+                                                continue
+                                        
+                                        progress_bar.progress(1.0)
+                                        status_text.text(f"✅ Bio analysis selesai! Ditemukan {found_count} calon klien")
+                                    
+                                    else:
+                                        st.warning(f"Tidak ditemukan pengguna dengan bio keywords '{bio_search_query}'")
+                                        
+                                except Exception as e:
+                                    st.error(f"Error saat pencarian bio: {str(e)}")
+                        else:
+                            st.warning("Pilih atau masukkan kata kunci bio pencarian")
+            
+            # Tampilkan hasil pencarian username/nama
             if st.session_state.search_results:
-                st.subheader("📊 Hasil Pencarian")
+                st.subheader("📊 Hasil Pencarian Username/Nama")
                 
                 # Urutkan berdasarkan skor potensi
                 sorted_results = sorted(st.session_state.search_results, 
@@ -1369,7 +1676,7 @@ if df is not None:
                                 st.info("💡 MONITOR")
                 
                 # Export hasil
-                if st.button("📥 Download Hasil (CSV)", use_container_width=True):
+                if st.button("📥 Download Hasil Username/Nama (CSV)", use_container_width=True):
                     export_df = pd.DataFrame([
                         {
                             'Username': r['username'],
@@ -1390,27 +1697,133 @@ if df is not None:
                     st.download_button(
                         label="📄 Download CSV",
                         data=csv_data,
-                        file_name=f"calon_klien_parthaistic_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                        file_name=f"calon_klien_username_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
                         mime="text/csv"
                     )
             
-            else:
+            # Tampilkan hasil pencarian bio keywords
+            if st.session_state.bio_search_results:
+                st.subheader("📊 Hasil Pencarian Bio Keywords")
+                
+                # Urutkan berdasarkan skor potensi
+                sorted_bio_results = sorted(st.session_state.bio_search_results, 
+                                          key=lambda x: x['potential_score'], reverse=True)
+                
+                # Statistik singkat
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Total Ditemukan", len(sorted_bio_results))
+                with col2:
+                    high_potential = sum(1 for r in sorted_bio_results if r['potential_score'] >= 60)
+                    st.metric("Potensi Tinggi", high_potential)
+                with col3:
+                    avg_followers = sum(r['follower_count'] for r in sorted_bio_results) // len(sorted_bio_results)
+                    st.metric("Rata-rata Followers", f"{avg_followers:,}")
+                with col4:
+                    avg_bio_match = sum(r['bio_match_score'] for r in sorted_bio_results) / len(sorted_bio_results)
+                    st.metric("Rata-rata Bio Match", f"{avg_bio_match:.1f}%")
+                
+                # Tampilkan hasil
+                for i, client in enumerate(sorted_bio_results):
+                    verified_badge = "✅" if client['is_verified'] else ""
+                    business_badge = "🏢" if client['is_business'] else ""
+                    
+                    # Tentukan warna skor
+                    if client['potential_score'] >= 60:
+                        score_class = "score-high"
+                        priority = "🔥 PRIORITAS TINGGI"
+                    elif client['potential_score'] >= 40:
+                        score_class = "score-medium"
+                        priority = "⭐ POTENSI BAIK"
+                    else:
+                        score_class = "score-low"
+                        priority = "💡 POTENSI RENDAH"
+                    
+                    with st.expander(f"{i+1}. @{client['username']} {verified_badge}{business_badge} - Skor: {client['potential_score']}/100 (Bio Match: {client['bio_match_score']}/100)", 
+                                   expanded=i < 2):
+                        
+                        col_info1, col_info2 = st.columns([3, 1])
+                        
+                        with col_info1:
+                            st.markdown(f"**👤 Nama:** {client['full_name']}")
+                            st.markdown(f"**📊 Followers:** {client['follower_count']:,}")
+                            
+                            if client['biography']:
+                                st.markdown(f"**📝 Bio:** {client['biography']}")
+                            
+                            if client['matched_keywords']:
+                                st.markdown("**🎯 Kata Kunci yang Cocok:**")
+                                for keyword in client['matched_keywords'][:8]:  # Maksimal 8 keywords
+                                    st.markdown(f'<span class="bio-indicator">{keyword}</span>', unsafe_allow_html=True)
+                                st.markdown(f"**Bio Match Score:** {client['bio_match_score']}/100")
+                            
+                            st.markdown(f"**🔍 Dicari dengan:** {client['search_query']}")
+                        
+                        with col_info2:
+                            st.markdown(f"[📱 Lihat Profil](https://instagram.com/{client['username']})")
+                            st.markdown(f'<p class="{score_class}">Skor: {client["potential_score"]}/100</p>', 
+                                      unsafe_allow_html=True)
+                            
+                            st.markdown(f'<span class="engagement-metric">Bio Match: {client["bio_match_score"]}/100</span>', unsafe_allow_html=True)
+                            
+                            if client['potential_score'] >= 60:
+                                st.success("🔥 PRIORITAS TINGGI")
+                            elif client['potential_score'] >= 40:
+                                st.warning("⭐ POTENSI BAIK")
+                            else:
+                                st.info("💡 MONITOR")
+                
+                # Export hasil bio search
+                if st.button("📥 Download Hasil Bio Keywords (CSV)", use_container_width=True):
+                    export_df = pd.DataFrame([
+                        {
+                            'Username': r['username'],
+                            'Full Name': r['full_name'],
+                            'Followers': r['follower_count'],
+                            'Biography': r['biography'],
+                            'Bio Match Score': r['bio_match_score'],
+                            'Matched Keywords': ', '.join(r['matched_keywords']),
+                            'Potential Score': r['potential_score'],
+                            'Search Query': r['search_query'],
+                            'Verified': r['is_verified'],
+                            'Business Account': r['is_business'],
+                            'Instagram Link': f"https://instagram.com/{r['username']}"
+                        }
+                        for r in sorted_bio_results
+                    ])
+                    
+                    csv_data = export_df.to_csv(index=False)
+                    st.download_button(
+                        label="📄 Download CSV",
+                        data=csv_data,
+                        file_name=f"calon_klien_bio_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                        mime="text/csv"
+                    )
+            
+            # Jika tidak ada hasil dari kedua metode
+            if not st.session_state.search_results and not st.session_state.bio_search_results:
                 st.info("""
                 **🎯 Cara Menggunakan Pencarian Calon Klien:**
                 
-                1. **Pilih Kata Kunci** - Pilih dari daftar atau masukkan sendiri
-                2. **Atur Filter** - Set minimal followers (min. 2000) dan jumlah hasil
-                3. **Mulai Pencarian** - Klik tombol untuk memulai pencarian otomatis
-                4. **Lihat Hasil** - Dapatkan daftar calon klien dengan scoring prioritas
-                5. **Download Data** - Export hasil untuk follow-up
+                ### 👤 **Metode 1: Username/Nama**
+                - Mencari berdasarkan username atau nama profil
+                - Cocok untuk pencarian umum dan eksplorasi
+                - Filter berdasarkan followers dan lokasi Indonesia
+                - Analisis kebutuhan dari bio dan profil
+                
+                ### 📝 **Metode 2: Bio Keywords (BARU!)**
+                - Mencari berdasarkan kata kunci spesifik dalam bio
+                - Lebih akurat untuk menemukan kebutuhan spesifik
+                - Analisis kecocokan bio dengan scoring detail
+                - Cocok untuk target yang sangat spesifik
                 
                 **Kriteria Pencarian:**
-                - ✅ Minimal 2000 followers
+                - ✅ Minimal 1000-2000 followers (tergantung metode)
                 - ✅ Berlokasi di Indonesia
                 - ✅ Menunjukkan kebutuhan video/foto
                 - ✅ Akun aktif dan relevan
                 
-                **Mulai pencarian sekarang!**
+                **Mulai pencarian sekarang dengan memilih metode di atas!**
                 """)
         
         else:
@@ -1786,7 +2199,7 @@ else:
 st.markdown("---")
 st.markdown("""
 <div style="text-align: center; color: #666;">
-    <p>🎬 Dasbor Analisis Klien Parthaistic | Enhanced with Post & Hashtag Search</p>
-    <p>Versi 10.0 - Complete Client Analysis with Advanced Post-based Discovery & Keyword Search</p>
+    <p>🎬 Dasbor Analisis Klien Parthaistic | Enhanced with Bio-based Search</p>
+    <p>Versi 11.0 - Complete Client Analysis with Username, Bio Keywords, Post & Hashtag Search</p>
 </div>
 """, unsafe_allow_html=True)
