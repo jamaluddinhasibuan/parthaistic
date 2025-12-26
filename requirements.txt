@@ -1,5 +1,701 @@
-streamlit
-plotly
-pandas
-numpy
-instagrapi
+# import streamlit as st
+# import pandas as pd
+# import plotly.express as px
+# import plotly.graph_objects as go
+# from plotly.subplots import make_subplots
+# import numpy as np
+# from datetime import datetime, timedelta
+# from collections import Counter
+# import re
+# import base64
+# from io import StringIO, BytesIO
+
+# # Konfigurasi Halaman
+# st.set_page_config(
+#     page_title="Analisis Klien Parthaistic",
+#     page_icon="🎬",
+#     layout="wide",
+#     initial_sidebar_state="expanded"
+# )
+
+# # CSS Kustom
+# st.markdown("""
+# <style>
+#     .main-header {
+#         font-size: 2.5rem;
+#         color: #2E86AB;
+#         text-align: center;
+#         margin-bottom: 2rem;
+#         font-weight: bold;
+#     }
+#     .metric-card {
+#         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+#         padding: 1.5rem;
+#         border-radius: 15px;
+#         color: white;
+#         margin: 0.5rem 0;
+#         text-align: center;
+#         box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+#     }
+#     .insight-box {
+#         background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+#         border-left: 5px solid #2E86AB;
+#         padding: 1.5rem;
+#         margin: 1rem 0;
+#         border-radius: 10px;
+#         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+#     }
+#     .client-card {
+#         background: white;
+#         border-radius: 15px;
+#         padding: 1.5rem;
+#         margin: 1rem 0;
+#         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+#         border-left: 5px solid #2E86AB;
+#         transition: transform 0.2s;
+#     }
+#     .client-card:hover {
+#         transform: translateY(-2px);
+#         box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+#     }
+#     .need-indicator {
+#         background: #28a745;
+#         color: white;
+#         padding: 0.3rem 0.8rem;
+#         border-radius: 20px;
+#         font-size: 0.8rem;
+#         margin: 0.2rem;
+#         display: inline-block;
+#     }
+#     .hashtag-indicator {
+#         background: #007bff;
+#         color: white;
+#         padding: 0.2rem 0.6rem;
+#         border-radius: 15px;
+#         font-size: 0.75rem;
+#         margin: 0.1rem;
+#         display: inline-block;
+#     }
+#     .post-content {
+#         background: #f8f9fa;
+#         border-radius: 10px;
+#         padding: 1rem;
+#         margin: 0.5rem 0;
+#         border-left: 3px solid #007bff;
+#         font-style: italic;
+#         max-height: 150px;
+#         overflow-y: auto;
+#     }
+#     .score-high { color: #28a745; font-weight: bold; }
+#     .score-medium { color: #ffc107; font-weight: bold; }
+#     .score-low { color: #dc3545; font-weight: bold; }
+#     .search-box {
+#         background: white;
+#         border: 2px solid #e9ecef;
+#         border-radius: 15px;
+#         padding: 1.5rem;
+#         margin: 1rem 0;
+#         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+#     }
+#     .download-section {
+#         background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+#         border: 2px solid #2196f3;
+#         border-radius: 15px;
+#         padding: 1.5rem;
+#         margin: 1rem 0;
+#         text-align: center;
+#     }
+#     .target-client-card {
+#         background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+#         border: 2px solid #2196f3;
+#         border-radius: 15px;
+#         padding: 1.5rem;
+#         margin: 1rem 0;
+#         box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+#     }
+#     .similar-client-card {
+#         background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+#         border: 1px solid #ff9800;
+#         border-radius: 15px;
+#         padding: 1rem;
+#         margin: 0.5rem 0;
+#         transition: all 0.3s ease;
+#         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+#     }
+#     .similar-client-card:hover {
+#         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+#         transform: translateY(-2px);
+#     }
+#     .similarity-score {
+#         background: linear-gradient(135deg, #ff9800, #f57c00);
+#         color: white;
+#         padding: 0.4rem 1rem;
+#         border-radius: 25px;
+#         font-weight: bold;
+#         font-size: 0.9rem;
+#         display: inline-block;
+#         margin-bottom: 0.5rem;
+#     }
+#     .client-info-row {
+#         display: flex;
+#         justify-content: space-between;
+#         margin: 0.3rem 0;
+#         font-size: 0.9rem;
+#     }
+#     .client-info-label {
+#         font-weight: 600;
+#         color: #555;
+#     }
+#     .client-info-value {
+#         color: #333;
+#     }
+#     .profiling-section {
+#         background: #f8f9fa;
+#         border-radius: 15px;
+#         padding: 2rem;
+#         margin: 1rem 0;
+#     }
+#     .youtube-link {
+#         color: #ff0000;
+#         text-decoration: none;
+#         font-weight: bold;
+#         transition: color 0.3s ease;
+#     }
+#     .youtube-link:hover {
+#         color: #cc0000;
+#         text-decoration: underline;
+#     }
+# </style>
+# """, unsafe_allow_html=True)
+
+# # Fungsi untuk membuat sample CSV lengkap berdasarkan data Excel
+# def create_complete_csv_template():
+#     template_data = """Name,Year,Type,Service 1,Service 2,Service 3,Regular End Period,Link Youtube
+# Youtubers Depok,2020,Community,Custom Video Production,,,,
+# LDK Senada STT NF,2021,Community,Project Musikal Pemuda Indonesia,Video Editor,,,
+# Jakarta Youth Choir,2021,Community,Project Musikal Pemuda Indonesia,,,,
+# Depok Bercerita,2021,Community,All In Regular,,,2023,https://youtu.be/PBrwimauGUk?si=ODTaGksvck3DdGLz
+# PKS Muda,2021,Community,All In Regular,,,2022,
+# BIGREDS Depok,2022,Community,Event Documentation,,,,https://youtu.be/06Xk4dQfgts?si=l-bjTagh0lqvLkaV
+# PPI UK,2023,Community,Short Video,,,,
+# Ikatan Ibu Brantas Abipraya,2023,Community,Event Documentation,,,,
+# FSLDK Jadebek,2023,Community,Video Editor,,,,
+# Nafkah Community,2023,Community,All In Regular,,,2024,https://youtu.be/-a5iVf8KNkE?si=x-XWtPRNnjHLRD94
+# Singing Engineers,2024,Community,Event Documentation,,,,
+# Dancing Engineers,2024,Community,Event Documentation,,,,
+# Youth Talent Alliance,2024,Community,Video Editor,,,,
+# International Madani Association,2025,Community,Video Editor,,,,
+# Pulang Production,2020,Corporate,Custom Video Production,,,,
+# Rumah Kepemimpinan,2020,Corporate,All In Regular,,,2020,
+# Putra Daerah Membangun,2020,Corporate,Video Editor,,,,
+# C4Change,2021,Corporate,Video Editor,,,,
+# Pahlawan Music School,2021,Corporate,Project Musikal Pemuda Indonesia,,,,
+# Duta Futsal,2021,Corporate,Project Musikal Pemuda Indonesia,,,,
+# Rabbani,2021,Corporate,Project Musikal Pemuda Indonesia,,,,
+# Adhiputro Konsultan Internasional,2021,Corporate,Project Musikal Pemuda Indonesia,,,,
+# Mi Studio,2021,Corporate,Project Musikal Pemuda Indonesia,,,,
+# Dompet Dhuafa Sumsel,2021,Corporate,Video Editor,,,,https://youtu.be/JSgUUdmGa5Q?si=zp07v_owv9U1FKa8
+# Themefood,2021,Corporate,Commercial Video Production,,,,
+# Muslimbox,2021,Corporate,Commercial Video Production,,,,
+# Indekstat,2021,Corporate,Event Documentation,,,,
+# STT NF,2021,Corporate,Company Profile,,,,https://youtu.be/8C_hmTagJc4?si=XH5Qe1VH7wf2neDV
+# Magister Manajemen UI,2022,Corporate,E-Learning Video,,,,
+# MI Taufiqurrahman 2,2022,Corporate,Event Documentation,Photographer,,,
+# Penerbit Luxima,2022,Corporate,Commercial Video Production,,,,
+# Top Karir Indonesia,2022,Corporate,Video Editor,,,,
+# SMKN 51 Jakarta,2022,Corporate,Workshop,,,,
+# Harrington Official Store,2023,Corporate,Commercial Video Production,,,,
+# Modernvet,2023,Corporate,Company Profile,,,,
+# Teh AI,2023,Corporate,Commercial Video Production,,,,
+# OFFO Living,2023,Corporate,Short Video,,,,
+# Yayasan Jantung Indonesia,2023,Corporate,Custom Video Production,,,,
+# Safia Natural,2023,Corporate,Event Documentation,,,,
+# PTQ Griya Quran,2024,Corporate,Company Profile,Event Documentation,,,https://youtu.be/FLxgj5k-MxA?si=R9jSGawS_TaVuoa4
+# Konservasi Indonesia,2024,Corporate,Event Documentation,,,,
+# Lingkar Keluarga Matahati,2024,Corporate,Custom Video Production,,,,
+# Kurita Indonesia,2024,Corporate,Video Editor,,,,
+# Klinik Soragan 100 C,2024,Corporate,Video Editor,,,,
+# Coway,2024,Corporate,Commercial Video Production,,,,
+# SMP Muhammadiyah 2,2024,Corporate,Photographer,,,,
+# Yayasan Muda Cemerlang,2025,Corporate,Workshop,,,,
+# Rizky Yudo,2020,Figure,All In Regular,,,2026,https://youtu.be/snuAJQ6gFDk?si=Buh0DgIRJprzlW7o
+# Oni Sahroni,2020,Figure,All In Regular,,,2020,https://youtu.be/KXRzrjmaJ-8?si=Srl_nYfRaj0MxlzN
+# Ibnu Wardani,2021,Figure,Video Editor,,,,https://youtu.be/PqqmHz6pPPQ?si=qdiuq77fbydzk-VO
+# Ongky Uktolseja,2021,Figure,Project Musikal Pemuda Indonesia,Video Editor,Videographer,
+# Anton,2021,Figure,Video Editor,,,,
+# Rizky Januardi,2021,Figure,Video Editor,,,,
+# Ash Shiddiq,2021,Figure,Video Editor,,,,
+# Imam Budi Hartono,2021,Figure,Short Video,,,,
+# The Winfields,2021,Figure,All In Regular,,,2022,https://youtu.be/_CWZxrOrm38?si=W5DtRt4iEYmEW3pl
+# The Vanderheydes,2022,Figure,All In Regular,,,2023,https://youtu.be/ehNX8_v-5Qw?si=Xtny4q-N3thEifkH
+# Shenina Cinnamon,2022,Figure,Short Video,,,,
+# Aqeela Calista,2022,Figure,Short Video,,,,https://youtu.be/beO6JUtri7E?si=Mo7bmdSbDnbW9xvb
+# Hanafiah Muhammad,2022,Figure,Video Editor Regular,,,2023,
+# Valerie-Veronika TWNS,2022,Figure,All In Regular,,,2022,https://youtu.be/rUX44bQdxYY?si=VtyntCAwypd58Xxz
+# Raisa Chairunnisa,2022,Figure,Short Film,,,,
+# SRAH,2022,Figure,All In Regular,,,2023,https://youtu.be/zHU8qR18x6g?si=mKF-U9875mDif-vV
+# Hanggini,2022,Figure,Short Video,,,,
+# Doula Alia,2022,Figure,All In Regular,,,2023,https://youtu.be/USTRbIR-_sA?si=pdhZ4S2HLQOWcmzB
+# Jelita,2022,Figure,All In Regular,,,2022,
+# Ranty Maria,2022,Figure,Video Editor,,,,
+# Michin Family,2022,Figure,Video Editor,Videographer,,
+# Nanda Arsyinta,2022,Figure,All In Regular,,,2023,https://youtu.be/85Z12y6b2rk?si=O7VwLpd3etZ-36N-
+# Dr. Yuliani Chandranata,2023,Figure,All In Regular,,,2023, https://youtu.be/WD_2ttqJYjE?si=HTvY_9RVIXbFcGkt
+# Broto Laras Family,2023,Figure,Custom Video Production,,,,
+# Sarah Tumiwa,2023,Figure,All In Regular,,,2023,https://youtu.be/avhjB5mDSeg?si=F9mTogU9aZqEfavx
+# Sabrina Anggraini,2023,Figure,Video Editor,,,2023,https://youtu.be/GZYCgCL8GIw?si=BqvesLjtkN6B5Io1
+# Jefan Nathanio,2023,Figure,All In Regular,,,2024,https://youtu.be/UIm71CmByzY?si=Hv4324aqA02EGJUc
+# Handika Pratama,2023,Figure,Video Editor,Videographer,,
+# Zhafira Aqyla,2023,Figure,Event Documentation,Video Editor,,
+# DJ Freya,2023,Figure,All In Regular,,,2024,https://youtube.com/@dj_freya?si=hzW60V6H1upKwD2j
+# Agatha Chelsea,2023,Figure,Video Editor,,,,https://youtu.be/de0JlcTOOU8?si=QBNNNXI8zGuq9I54
+# Luthfi Aulia,2023,Figure,Creative Writer,,,,
+# Sabrina Najwa Aulia,2024,Figure,Video Editor,,,,
+# Rahmad Junaidi,2024,Figure,All In Regular,,,2024,
+# Bang Ghozi,2024,Figure,All In Regular,,,2026,https://youtu.be/bxU9CyNoCxI?si=Mi1sxHcXxPzYrP1P
+# BKPM RI,2021,Government,Event Documentation,,,,https://youtu.be/TeHW9ZTC0Qk?si=MOKmOUbi5Kui6Kl4
+# Pemkot Depok,2021,Government,All In Regular,Workshop,,2024,
+# BPI Kemdikbud RI,2023,Government,Short Video,,,,
+# Brantas Abipraya,2023,Government,Event Documentation,,,,
+# KKP RI,2024,Government,Event Documentation,,,,
+# USAID,2024,Government,Event Documentation,,,,
+# WWF Indonesia,2024,Government,Event Documentation,,,,
+# Investabook,2024,Government,All In Regular,,,2024,
+# DAMRI,2021,SOE,Video Editor,,,,https://youtu.be/hHvHNqwoIbo?si=8qzYQ5Oh52H-O0rU
+# TMII,2021,SOE,Project Musikal Pemuda Indonesia,,,,
+# BRI,2022,SOE,E-Learning Video,,,,
+# Indra Karya,2022,SOE,Video Editor,,,,https://youtu.be/5FLHbEUjSt0?si=leMWatcQ2KrudQ1-
+# RSUD ASA Depok,2024,SOE,Company Profile,,,,
+# Gag Nikel,2024,SOE,Company Profile,Short Film,Photographer,2025,https://youtu.be/vn5QbfX0iBU?si=QgUxcvK0-mZrMmxG"""
+#     return template_data
+
+# # Fungsi untuk mencari klien serupa
+# def find_similar_clients(target_client, df, top_n=5):
+#     """Mencari klien dengan profil serupa berdasarkan berbagai faktor"""
+#     if target_client not in df['Name'].values:
+#         return None
+    
+#     target_row = df[df['Name'] == target_client].iloc[0]
+#     similarities = []
+    
+#     for idx, row in df.iterrows():
+#         if row['Name'] == target_client:
+#             continue
+            
+#         similarity_score = 0
+        
+#         # 1. Kesamaan Tipe Klien (bobot: 30%)
+#         if row['Type'] == target_row['Type']:
+#             similarity_score += 30
+        
+#         # 2. Kedekatan Tahun (bobot: 20%)
+#         year_diff = abs(row['Year'] - target_row['Year'])
+#         if year_diff == 0:
+#             similarity_score += 20
+#         elif year_diff <= 1:
+#             similarity_score += 15
+#         elif year_diff <= 2:
+#             similarity_score += 10
+#         elif year_diff <= 3:
+#             similarity_score += 5
+        
+#         # 3. Kesamaan Layanan (bobot: 30%)
+#         target_services = set(target_row['Services'])
+#         row_services = set(row['Services'])
+        
+#         if target_services and row_services:
+#             # Jaccard similarity untuk layanan
+#             intersection = len(target_services.intersection(row_services))
+#             union = len(target_services.union(row_services))
+#             if union > 0:
+#                 jaccard_similarity = intersection / union
+#                 similarity_score += jaccard_similarity * 30
+        
+#         # 4. Kesamaan Status Loyalitas (bobot: 15%)
+#         if row['Is_Loyal'] == target_row['Is_Loyal']:
+#             similarity_score += 15
+        
+#         # 5. Kesamaan Jumlah Layanan (bobot: 5%)
+#         service_count_diff = abs(row['Service_Count'] - target_row['Service_Count'])
+#         if service_count_diff == 0:
+#             similarity_score += 5
+#         elif service_count_diff <= 1:
+#             similarity_score += 3
+        
+#         similarities.append({
+#             'Name': row['Name'],
+#             'Similarity_Score': similarity_score,
+#             'Type': row['Type'],
+#             'Year': row['Year'],
+#             'Services': row['Services'],
+#             'Is_Loyal': row['Is_Loyal'],
+#             'Link_Youtube': row.get('Link_Youtube', ''),
+#             'Service_Count': row['Service_Count']
+#         })
+    
+#     similarities_df = pd.DataFrame(similarities)
+#     return similarities_df.nlargest(top_n, 'Similarity_Score')
+
+# # Header utama
+# st.markdown('<h1 class="main-header">🎬 Dasbor Analisis Klien Parthaistic</h1>', unsafe_allow_html=True)
+
+# # Load data existing clients
+# @st.cache_data
+# def load_and_process_data(uploaded_file=None):
+#     if uploaded_file is not None:
+#         try:
+#             # Cek apakah file Excel atau CSV
+#             if uploaded_file.name.endswith('.xlsx'):
+#                 df = pd.read_excel(uploaded_file)
+#             else:
+#                 df = pd.read_csv(uploaded_file)
+#             st.success("✅ Data berhasil dimuat!")
+#         except Exception as e:
+#             st.error(f"❌ Error membaca file: {e}")
+#             return None
+#     else:
+#         # Data default - menggunakan data lengkap
+#         data = create_complete_csv_template()
+#         df = pd.read_csv(StringIO(data))
+#         st.info("📄 Menggunakan data default. Upload file CSV/Excel untuk menggunakan data Anda sendiri.")
+    
+#     # Proses data
+#     df['Regular End Period'] = pd.to_numeric(df['Regular End Period'], errors='coerce')
+    
+#     services = []
+#     service_columns = [col for col in df.columns if col.startswith('Service')]
+    
+#     for _, row in df.iterrows():
+#         client_services = []
+#         for col in service_columns:
+#             if pd.notna(row[col]) and str(row[col]).strip():
+#                 client_services.append(str(row[col]).strip())
+#         services.append(client_services)
+    
+#     df['Services'] = services
+#     df['Service_Count'] = df['Services'].apply(len)
+#     df['Is_Loyal'] = df['Regular End Period'].notna()
+#     df['Loyalty_Duration'] = df['Regular End Period'] - df['Year']
+#     df['Loyalty_Duration'] = df['Loyalty_Duration'].fillna(0)
+    
+#     # Rename kolom Link Youtube untuk konsistensi
+#     if 'Link Youtube' in df.columns:
+#         df = df.rename(columns={'Link Youtube': 'Link_Youtube'})
+    
+#     return df
+
+# # Area upload file dengan template download
+# st.subheader("📁 Upload Data CSV/Excel")
+
+# # Section download template
+# st.markdown("""
+# <div class="download-section">
+#     <h4>📋 Template CSV Format</h4>
+#     <p>Download template CSV lengkap dengan semua data klien Parthaistic untuk melihat format yang benar</p>
+# </div>
+# """, unsafe_allow_html=True)
+
+# col1, col2 = st.columns([1, 1])
+
+# with col1:
+#     # Tombol download template CSV lengkap
+#     template_csv_data = create_complete_csv_template()
+#     st.download_button(
+#         label="📥 Download Template CSV Lengkap",
+#         data=template_csv_data,
+#         file_name="template_klien_parthaistic_lengkap.csv",
+#         mime="text/csv",
+#         help="Download template dengan semua data klien untuk melihat format yang benar",
+#         use_container_width=True
+#     )
+
+# with col2:
+#     # Informasi format
+#     st.info("""
+#     **📋 Format Kolom CSV/Excel:**
+#     - **Name**: Nama klien/perusahaan
+#     - **Year**: Tahun mulai (2020-2025)
+#     - **Type**: Corporate/Figure/Community/Government/SOE
+#     - **Service 1-3**: Layanan yang digunakan
+#     - **Regular End Period**: Tahun berakhir (jika loyal)
+#     - **Link Youtube**: Link video YouTube hasil kerja sama
+#     """)
+
+# # Upload file
+# uploaded_file = st.file_uploader(
+#     "Pilih file CSV atau Excel Anda", 
+#     type=['csv', 'xlsx'],
+#     help="Upload file CSV atau Excel dengan format sesuai template yang dapat didownload di atas"
+# )
+
+# # Muat data
+# df = load_and_process_data(uploaded_file)
+
+# if df is not None:
+#     # Tab Dasbor Utama
+#     tab1, tab2, tab3, tab4 = st.tabs([
+#         "📊 Gambaran Umum", 
+#         "🎯 Profiling Klien", 
+#         "🔍 Analisis Klien Loyal", 
+#         "💡 Wawasan Bisnis"
+#     ])
+
+#     with tab1:
+#         st.header("📊 Gambaran Umum Bisnis")
+        
+#         col1, col2, col3, col4 = st.columns(4)
+        
+#         with col1:
+#             st.markdown(f"""
+#             <div class="metric-card">
+#                 <h3>{len(df)}</h3>
+#                 <p>Total Klien</p>
+#             </div>
+#             """, unsafe_allow_html=True)
+        
+#         with col2:
+#             loyal_clients = len(df[df['Is_Loyal']])
+#             st.markdown(f"""
+#             <div class="metric-card">
+#                 <h3>{loyal_clients}</h3>
+#                 <p>Klien Loyal</p>
+#             </div>
+#             """, unsafe_allow_html=True)
+        
+#         with col3:
+#             loyalty_rate = (loyal_clients / len(df) * 100) if len(df) > 0 else 0
+#             st.markdown(f"""
+#             <div class="metric-card">
+#                 <h3>{loyalty_rate:.1f}%</h3>
+#                 <p>Tingkat Loyalitas</p>
+#             </div>
+#             """, unsafe_allow_html=True)
+        
+#         with col4:
+#             avg_services = df['Service_Count'].mean()
+#             st.markdown(f"""
+#             <div class="metric-card">
+#                 <h3>{avg_services:.1f}</h3>
+#                 <p>Rata-rata Layanan/Klien</p>
+#             </div>
+#             """, unsafe_allow_html=True)
+        
+#         # Grafik distribusi klien
+#         col1, col2 = st.columns(2)
+        
+#         with col1:
+#             st.subheader("📈 Klien berdasarkan Tahun & Tipe")
+#             year_type_data = df.groupby(['Year', 'Type']).size().reset_index(name='Count')
+#             fig = px.bar(year_type_data, x='Year', y='Count', color='Type',
+#                         title="Distribusi Klien berdasarkan Tahun dan Tipe")
+#             fig.update_layout(height=400)
+#             st.plotly_chart(fig, use_container_width=True)
+        
+#         with col2:
+#             st.subheader("🥧 Distribusi Tipe Klien")
+#             type_counts = df['Type'].value_counts()
+#             fig = px.pie(values=type_counts.values, names=type_counts.index,
+#                         title="Distribusi Tipe Klien")
+#             fig.update_layout(height=400)
+#             st.plotly_chart(fig, use_container_width=True)
+
+#     with tab2:
+#         st.header("🎯 Profiling Klien Tingkat Lanjut")
+        
+#         # Container untuk profiling
+#         st.markdown('<div class="profiling-section">', unsafe_allow_html=True)
+        
+#         # Bagian pencarian klien serupa
+#         st.subheader("🔍 Temukan Klien Serupa")
+#         st.markdown("Pilih klien untuk menemukan profil serupa berdasarkan tipe, layanan, tahun, dan status loyalitas:")
+        
+#         selected_client = st.selectbox(
+#             "Pilih klien untuk analisis kesamaan:", 
+#             [""] + sorted(df['Name'].tolist()),
+#             key="client_similarity_selector"
+#         )
+        
+#         if selected_client:
+#             similar_clients = find_similar_clients(selected_client, df, top_n=5)
+            
+#             if similar_clients is not None and len(similar_clients) > 0:
+#                 col1, col2 = st.columns([1, 2])
+                
+#                 with col1:
+#                     # Target client card
+#                     target_info = df[df['Name'] == selected_client].iloc[0]
+#                     loyalty_status = "Loyal" if target_info['Is_Loyal'] else "Non-loyal"
+#                     youtube_link = target_info.get('Link_Youtube', '')
+                    
+#                     # Membuat link YouTube yang bisa diklik dengan markdown
+#                     youtube_display = "Tidak ada"
+#                     if youtube_link and str(youtube_link).strip() and str(youtube_link).strip() != 'nan':
+#                         youtube_display = f'<a href="{youtube_link}" target="_blank" class="youtube-link">🎬 Tonton Video di YouTube</a>'
+                    
+#                     st.markdown(f"""
+#                     <div class="target-client-card">
+#                         <h4>📋 Klien Target</h4>
+#                         <h3 style="color: #1976d2; margin: 0.5rem 0;">{selected_client}</h3>
+#                         <div class="client-info-row">
+#                             <span class="client-info-label">Tipe:</span>
+#                             <span class="client-info-value">{target_info['Type']}</span>
+#                         </div>
+#                         <div class="client-info-row">
+#                             <span class="client-info-label">Tahun:</span>
+#                             <span class="client-info-value">{target_info['Year']}</span>
+#                         </div>
+#                         <div class="client-info-row">
+#                             <span class="client-info-label">Status:</span>
+#                             <span class="client-info-value">{loyalty_status}</span>
+#                         </div>
+#                         <div class="client-info-row">
+#                             <span class="client-info-label">YouTube:</span>
+#                             <span class="client-info-value">{youtube_display}</span>
+#                         </div>
+#                         <div style="margin-top: 1rem;">
+#                             <span class="client-info-label">Layanan ({target_info['Service_Count']}):</span><br>
+#                             <span class="client-info-value">{', '.join(target_info['Services'])}</span>
+#                         </div>
+#                     </div>
+#                     """, unsafe_allow_html=True)
+                
+#                 with col2:
+#                     # Similar clients
+#                     st.markdown("### 🤝 Klien Paling Serupa")
+                    
+#                     for idx, client in similar_clients.iterrows():
+#                         similarity_pct = client['Similarity_Score']
+#                         loyalty_status = "Loyal" if client['Is_Loyal'] else "Non-loyal"
+#                         youtube_link = client.get('Link_Youtube', '')
+                        
+#                         # Membuat link YouTube yang bisa diklik
+#                         youtube_display = "Tidak ada"
+#                         if youtube_link and str(youtube_link).strip() and str(youtube_link).strip() != 'nan':
+#                             youtube_display = f'<a href="{youtube_link}" target="_blank" class="youtube-link">🎬 Tonton Video</a>'
+                        
+#                         # Determine similarity level
+#                         if similarity_pct >= 70:
+#                             similarity_level = "🔥 Sangat Mirip"
+#                             card_style = "background: linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 100%); border-color: #4caf50;"
+#                         elif similarity_pct >= 50:
+#                             similarity_level = "⭐ Cukup Mirip"
+#                             card_style = "background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border-color: #ff9800;"
+#                         else:
+#                             similarity_level = "💡 Sedikit Mirip"
+#                             card_style = "background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%); border-color: #9c27b0;"
+                        
+#                         st.markdown(f"""
+#                         <div class="similar-client-card" style="{card_style}">
+#                             <div class="similarity-score">Kesamaan: {similarity_pct:.1f}% - {similarity_level}</div>
+#                             <h4 style="margin: 0.5rem 0; color: #e65100;">{client['Name']}</h4>
+#                             <div class="client-info-row">
+#                                 <span class="client-info-label">Tipe:</span>
+#                                 <span class="client-info-value">{client['Type']}</span>
+#                             </div>
+#                             <div class="client-info-row">
+#                                 <span class="client-info-label">Tahun:</span>
+#                                 <span class="client-info-value">{client['Year']}</span>
+#                             </div>
+#                             <div class="client-info-row">
+#                                 <span class="client-info-label">Status:</span>
+#                                 <span class="client-info-value">{loyalty_status}</span>
+#                             </div>
+#                             <div class="client-info-row">
+#                                 <span class="client-info-label">YouTube:</span>
+#                                 <span class="client-info-value">{youtube_display}</span>
+#                             </div>
+#                             <div style="margin-top: 0.5rem;">
+#                                 <span class="client-info-label">Layanan ({client['Service_Count']}):</span><br>
+#                                 <span class="client-info-value">{', '.join(client['Services'])}</span>
+#                             </div>
+#                         </div>
+#                         """, unsafe_allow_html=True)
+        
+#         st.markdown('</div>', unsafe_allow_html=True)
+        
+#         # Analisis layanan populer
+#         st.subheader("🎬 Analisis Popularitas Layanan")
+#         all_services = []
+#         for services_list in df['Services']:
+#             all_services.extend(services_list)
+        
+#         if all_services:
+#             service_counts = pd.Series(all_services).value_counts().head(10)
+#             fig = px.bar(x=service_counts.values, y=service_counts.index, orientation='h',
+#                         title="10 Layanan Paling Populer")
+#             fig.update_layout(height=500)
+#             st.plotly_chart(fig, use_container_width=True)
+
+#     with tab3:
+#         st.header("🔍 Analisis Klien Loyal")
+        
+#         loyal_df = df[df['Is_Loyal']].copy()
+        
+#         if len(loyal_df) > 0:
+#             col1, col2 = st.columns(2)
+            
+#             with col1:
+#                 st.subheader("👑 Karakteristik Klien Loyal")
+#                 loyal_types = loyal_df['Type'].value_counts()
+#                 fig = px.pie(values=loyal_types.values, names=loyal_types.index,
+#                             title="Klien Loyal berdasarkan Tipe")
+#                 st.plotly_chart(fig, use_container_width=True)
+            
+#             with col2:
+#                 st.subheader("🎬 Layanan Populer Klien Loyal")
+#                 loyal_services = []
+#                 for services in loyal_df['Services']:
+#                     loyal_services.extend(services)
+                
+#                 if loyal_services:
+#                     loyal_service_counts = pd.Series(loyal_services).value_counts().head(8)
+#                     fig = px.bar(x=loyal_service_counts.values, y=loyal_service_counts.index, 
+#                                 orientation='h', title="Layanan Teratas di Kalangan Klien Loyal")
+#                     fig.update_layout(height=400)
+#                     st.plotly_chart(fig, use_container_width=True)
+#         else:
+#             st.warning("Tidak ada klien loyal yang ditemukan.")
+
+#     with tab4:
+#         st.header("💡 Wawasan Bisnis")
+        
+#         # Generate insights
+#         insights = []
+        
+#         # Analisis tren pertumbuhan
+#         yearly_growth = df.groupby('Year').size()
+#         if len(yearly_growth) > 1:
+#             latest_growth = yearly_growth.iloc[-1] - yearly_growth.iloc[-2]
+#             growth_rate = (latest_growth / yearly_growth.iloc[-2]) * 100 if yearly_growth.iloc[-2] > 0 else 0
+#             insights.append(f"📈 **Tren Pertumbuhan**: Pertumbuhan klien {growth_rate:+.1f}% dari {yearly_growth.index[-2]} ke {yearly_growth.index[-1]}")
+        
+#         # Wawasan loyalitas
+#         if len(df[df['Is_Loyal']]) > 0:
+#             loyalty_rate = len(df[df['Is_Loyal']]) / len(df) * 100
+#             insights.append(f"👑 **Tingkat Loyalitas**: {loyalty_rate:.1f}% klien menjadi pelanggan setia")
+        
+#         # Layanan paling populer
+#         if all_services:
+#             most_popular_service = pd.Series(all_services).value_counts().index[0]
+#             insights.append(f"🌟 **Layanan Paling Populer**: {most_popular_service} adalah layanan yang paling banyak diminta")
+        
+#         # Analisis klien dengan video YouTube
+#         youtube_clients = df[df['Link_Youtube'].notna() & (df['Link_Youtube'] != '')]
+#         if len(youtube_clients) > 0:
+#             youtube_percentage = len(youtube_clients) / len(df) * 100
+#             insights.append(f"🎬 **Portofolio Video**: {len(youtube_clients)} klien ({youtube_percentage:.1f}%) memiliki video YouTube yang dapat ditampilkan")
+        
+#         # Tampilkan wawasan
+#         for insight in insights:
+#             st.markdown(f"<div class='insight-box'>{insight}</div>", unsafe_allow_html=True)
+
+# else:
+#     st.warning("⚠️ Tidak dapat memuat data. Periksa file CSV/Excel Anda.")
+
+# # Footer
+# st.markdown("---")
+# st.markdown("""
+# <div style="text-align: center; color: #666;">
+#     <p>🎬 Dasbor Analisis Klien Parthaistic | Client Analytics Dashboard</p>
+# </div>
+# """, unsafe_allow_html=True)
