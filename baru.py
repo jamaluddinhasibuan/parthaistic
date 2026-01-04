@@ -12,379 +12,254 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS Kustom yang lebih menarik dengan animasi
+# CSS Kustom yang sederhana dan profesional
 st.markdown("""
 <style>
-    /* Animasi utama */
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
+    /* Reset dan base styles */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
     }
     
-    @keyframes float {
-        0%, 100% { transform: translateY(0px); }
-        50% { transform: translateY(-10px); }
+    /* Font yang bersih */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    .stApp {
+        font-family: 'Inter', sans-serif;
     }
     
-    @keyframes glow {
-        0%, 100% { box-shadow: 0 0 20px rgba(102, 126, 234, 0.3); }
-        50% { box-shadow: 0 0 30px rgba(102, 126, 234, 0.6); }
-    }
-    
-    @keyframes pulse {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.05); }
-        100% { transform: scale(1); }
-    }
-    
-    @keyframes typing {
-        from { width: 0 }
-        to { width: 100% }
-    }
-    
-    @keyframes blink {
-        50% { border-color: transparent }
-    }
-    
-    /* Styles utama dengan animasi */
+    /* Header utama */
     .main-header {
-        font-size: 3.5rem;
-        color: #2E86AB;
+        font-size: 2.5rem;
+        color: #1e293b;
         text-align: center;
-        margin-bottom: 1.5rem;
-        font-weight: 800;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        margin-bottom: 1rem;
+        font-weight: 700;
         padding: 20px 0;
-        animation: fadeIn 1s ease-out, float 6s ease-in-out infinite;
+        border-bottom: 1px solid #e2e8f0;
     }
     
     .sub-header {
-        font-size: 1.5rem;
-        color: #4A5568;
+        font-size: 1.2rem;
+        color: #64748b;
         text-align: center;
         margin-bottom: 2.5rem;
         font-weight: 400;
-        animation: fadeIn 1.5s ease-out;
     }
     
+    /* Hero Section yang bersih */
     .hero-section {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-        border-radius: 20px;
-        padding: 3rem;
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 3rem 2rem;
         margin: 2rem 0;
         text-align: center;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        animation: fadeIn 2s ease-out, glow 3s ease-in-out infinite;
-        position: relative;
-        overflow: hidden;
+        border: 1px solid #e2e8f0;
     }
     
-    .hero-section::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        left: -50%;
-        width: 200%;
-        height: 200%;
-        background: linear-gradient(
-            45deg,
-            transparent 30%,
-            rgba(255, 255, 255, 0.1) 50%,
-            transparent 70%
-        );
-        animation: shimmer 8s infinite linear;
+    .hero-title {
+        font-size: 2rem;
+        color: #1e293b;
+        margin-bottom: 1rem;
+        font-weight: 600;
     }
     
-    @keyframes shimmer {
-        0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
-        100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+    .hero-description {
+        color: #64748b;
+        font-size: 1.1rem;
+        max-width: 800px;
+        margin: 0 auto;
+        line-height: 1.6;
     }
     
-    .recommendation-card {
+    /* Stats Card */
+    .stats-card {
         background: white;
-        border-radius: 15px;
+        border-radius: 12px;
         padding: 1.5rem;
         margin: 1rem 0;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-        border: 1px solid #E2E8F0;
-        transition: all 0.3s ease;
-        position: relative;
-        overflow: hidden;
-        animation: fadeIn 0.5s ease-out;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        border: 1px solid #e2e8f0;
+        text-align: center;
+        transition: all 0.2s ease;
+    }
+    
+    .stats-card:hover {
+        border-color: #3b82f6;
+    }
+    
+    .stats-number {
+        font-size: 2.2rem;
+        font-weight: 700;
+        color: #3b82f6;
+        margin-bottom: 8px;
+    }
+    
+    .stats-label {
+        font-size: 0.95rem;
+        color: #475569;
+        font-weight: 500;
+    }
+    
+    /* Recommendation Card */
+    .recommendation-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        border: 1px solid #e2e8f0;
+        transition: all 0.2s ease;
     }
     
     .recommendation-card:hover {
-        transform: translateY(-10px) scale(1.02);
-        box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-        animation: pulse 0.5s ease-out;
-    }
-    
-    .recommendation-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: linear-gradient(135deg, #E4405F, #C13584);
-        animation: shimmer 2s infinite linear;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        border-color: #3b82f6;
     }
     
     .username-badge {
-        background: linear-gradient(135deg, #E4405F, #C13584);
-        color: white;
+        background: #eff6ff;
+        color: #1d4ed8;
         padding: 0.4rem 1rem;
-        border-radius: 25px;
+        border-radius: 20px;
         font-size: 0.9rem;
         font-weight: 600;
         display: inline-block;
         margin-bottom: 1rem;
-        box-shadow: 0 3px 10px rgba(228, 64, 95, 0.2);
-        animation: pulse 2s infinite;
+        border: 1px solid #dbeafe;
     }
     
-    .stats-card {
-        background: white;
-        border-radius: 15px;
-        padding: 1.5rem;
-        margin: 1rem 0;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-        border-left: 5px solid #2E86AB;
-        text-align: center;
-        transition: all 0.3s ease;
-        animation: fadeIn 1s ease-out;
-    }
-    
-    .stats-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 15px 30px rgba(0,0,0,0.15);
-    }
-    
+    /* Search Button */
     .search-button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: #3b82f6;
         color: white;
         border: none;
-        padding: 1rem 2rem;
-        border-radius: 25px;
-        font-size: 1.1rem;
+        padding: 0.9rem 2rem;
+        border-radius: 8px;
+        font-size: 1rem;
         font-weight: 600;
         cursor: pointer;
-        transition: all 0.3s ease;
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-        margin: 1rem auto;
-        animation: glow 2s infinite, pulse 2s infinite;
+        transition: all 0.2s ease;
+        display: inline-block;
+        margin: 1rem 0;
     }
     
     .search-button:hover {
-        transform: translateY(-5px) scale(1.05);
-        box-shadow: 0 15px 30px rgba(102, 126, 234, 0.4);
-        animation: none;
+        background: #2563eb;
+        transform: translateY(-1px);
     }
     
-    /* Advanced Loading Animation */
+    /* Loading State */
     .loading-container {
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        gap: 30px;
+        gap: 20px;
         margin: 3rem 0;
         padding: 3rem;
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border-radius: 20px;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .loading-container::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        left: -50%;
-        width: 200%;
-        height: 200%;
-        background: linear-gradient(
-            45deg,
-            transparent 30%,
-            rgba(102, 126, 234, 0.1) 50%,
-            transparent 70%
-        );
-        animation: shimmer 3s infinite linear;
+        background: #f8fafc;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
     }
     
     .loading-title {
-        font-size: 2rem;
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-weight: 700;
+        font-size: 1.5rem;
+        color: #1e293b;
+        font-weight: 600;
         text-align: center;
-        animation: float 3s ease-in-out infinite;
     }
     
     .loading-subtitle {
-        font-size: 1.2rem;
-        color: #6c757d;
+        font-size: 1rem;
+        color: #64748b;
         text-align: center;
-        overflow: hidden;
-        white-space: nowrap;
-        animation: typing 3.5s steps(40, end), blink .75s step-end infinite;
-        border-right: 3px solid #667eea;
     }
     
-    .particles {
-        display: flex;
-        gap: 8px;
-    }
-    
-    .particle {
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        animation: bounce 1s infinite ease-in-out;
-    }
-    
-    .particle:nth-child(1) { animation-delay: -0.32s; }
-    .particle:nth-child(2) { animation-delay: -0.16s; }
-    .particle:nth-child(3) { animation-delay: 0s; }
-    .particle:nth-child(4) { animation-delay: 0.16s; }
-    .particle:nth-child(5) { animation-delay: 0.32s; }
-    
-    @keyframes bounce {
-        0%, 80%, 100% { 
-            transform: scale(0);
-            opacity: 0.5;
-        }
-        40% { 
-            transform: scale(1);
-            opacity: 1;
-        }
-    }
-    
+    /* Progress bar sederhana */
     .progress-bar {
         width: 100%;
-        height: 10px;
-        background: #e9ecef;
-        border-radius: 5px;
+        height: 6px;
+        background: #e2e8f0;
+        border-radius: 3px;
         overflow: hidden;
         margin-top: 20px;
+        max-width: 400px;
     }
     
     .progress-fill {
         height: 100%;
-        background: linear-gradient(90deg, #667eea, #764ba2);
+        background: #3b82f6;
         width: 0%;
-        animation: progress 10s linear forwards;
-        border-radius: 5px;
+        border-radius: 3px;
     }
     
-    @keyframes progress {
-        0% { width: 0%; }
-        100% { width: 100%; }
-    }
-    
-    .loading-stats {
-        display: flex;
-        gap: 30px;
-        margin-top: 20px;
-    }
-    
-    .loading-stat {
-        text-align: center;
-        animation: fadeIn 2s ease-out;
-    }
-    
-    .loading-stat-number {
-        font-size: 2rem;
-        font-weight: 700;
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        animation: pulse 1s infinite;
-    }
-    
-    .loading-stat-label {
-        font-size: 0.9rem;
-        color: #6c757d;
-    }
-    
-    /* Floating elements */
-    .floating-element {
-        position: absolute;
-        font-size: 2rem;
-        opacity: 0.1;
-        animation: float 20s infinite linear;
-    }
-    
-    .floating-1 { top: 10%; left: 5%; animation-delay: 0s; }
-    .floating-2 { top: 20%; right: 10%; animation-delay: -5s; }
-    .floating-3 { bottom: 30%; left: 15%; animation-delay: -10s; }
-    .floating-4 { bottom: 20%; right: 5%; animation-delay: -15s; }
-    
-    /* Result animations */
+    /* Result section */
     .result-count {
-        background: linear-gradient(135deg, #4CAF50, #45a049);
+        background: #10b981;
         color: white;
-        padding: 0.8rem 2rem;
-        border-radius: 25px;
-        font-size: 1.2rem;
+        padding: 0.7rem 1.5rem;
+        border-radius: 20px;
+        font-size: 1rem;
         font-weight: 600;
         display: inline-block;
         margin-bottom: 1.5rem;
-        box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
-        animation: fadeIn 1s ease-out, pulse 2s infinite;
     }
     
-    .refresh-button {
-        background: linear-gradient(135deg, #FF9800, #F57C00);
-        color: white;
-        border: none;
-        padding: 1rem 2rem;
-        border-radius: 25px;
-        font-size: 1rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s ease;
+    /* Instagram link */
+    .instagram-link {
+        color: #e4405f;
+        text-decoration: none;
+        font-weight: 500;
         display: inline-flex;
         align-items: center;
+        gap: 5px;
+        margin-top: 0.5rem;
+        padding: 0.4rem 0.8rem;
+        background: #fff1f2;
+        border-radius: 6px;
+        border: 1px solid #fecdd3;
+    }
+    
+    .instagram-link:hover {
+        background: #ffe4e6;
+        text-decoration: underline;
+    }
+    
+    /* Tips box */
+    .tips-box {
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-top: 2rem;
+    }
+    
+    .tips-title {
+        color: #16a34a;
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 0.8rem;
+        display: flex;
+        align-items: center;
         gap: 8px;
-        animation: fadeIn 1s ease-out;
     }
     
-    .refresh-button:hover {
-        transform: translateY(-3px) scale(1.05);
-        box-shadow: 0 15px 25px rgba(255, 152, 0, 0.3);
-    }
-    
-    /* Success animation */
-    @keyframes success {
-        0% { transform: scale(0); opacity: 0; }
-        50% { transform: scale(1.2); opacity: 1; }
-        100% { transform: scale(1); opacity: 1; }
-    }
-    
-    .success-animation {
-        animation: success 1s ease-out;
-    }
-    
-    /* Empty state with animation */
-    .empty-state {
-        text-align: center;
-        padding: 4rem;
-        color: #6c757d;
-        animation: fadeIn 1s ease-out;
-    }
-    
-    .empty-state-icon {
-        font-size: 5rem;
-        margin-bottom: 1rem;
-        color: #dee2e6;
-        animation: float 4s ease-in-out infinite;
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .main-header {
+            font-size: 2rem;
+        }
+        
+        .hero-section {
+            padding: 2rem 1rem;
+        }
+        
+        .hero-title {
+            font-size: 1.5rem;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -2407,104 +2282,81 @@ def get_recommendations_with_loading(num_recommendations=12):
         return instagram_df.sample(n=num_recommendations)
 
 # Header utama
-st.markdown('<h1 class="main-header">PARTHAISTIC - DAHSBOARD REKOMENDASI CALON KLIEN</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-header">Parthaistic - Dashboard Rekomendasi Calon Klien</h1>', unsafe_allow_html=True)
 
-# Hero Section dengan animasi
+# Hero Section
 st.markdown("""
 <div class="hero-section">
-    <h2 style="color: #2E86AB; margin-bottom: 1rem; animation: fadeIn 1s ease-out, float 6s ease-in-out infinite;">✨ Temukan Calon Klien Terbaik</h2>
-    <p style="color: #666; font-size: 1.2rem; animation: fadeIn 2s ease-out;">
-        Dashboard rekomendasi calon klien berbasis data Instagram dengan algoritma cerdas
-    </p>
+    <h2 class="hero-title">Temukan Calon Klien Terbaik</h2>
     
-    <!-- Floating elements -->
-    <div class="floating-element">📊</div>
-    <div class="floating-element">🔍</div>
-    <div class="floating-element">🎯</div>
-    <div class="floating-element">✨</div>
 </div>
 """, unsafe_allow_html=True)
 
-# Stats Section dengan animasi
+# Stats Section
+st.markdown("<br>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align: center; color: #1e293b; margin-bottom: 1.5rem;'>Statistik Database</h3>", unsafe_allow_html=True)
+
 col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.markdown("""
+    <div class="stats-card">
+        <div class="stats-number">850+</div>
+        <div class="stats-label">Profil Instagram</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 with col2:
     st.markdown("""
     <div class="stats-card">
-        <h3 style="animation: pulse 2s infinite;">100%</h3>
-        <p style="color: #666;">Data Terverifikasi</p>
-        <p style="color: #666; font-size: 0.9rem; margin-top: 10px;">Rekomendasi Pengambilan Data Dari Instagram</p>
+        <div class="stats-number">100%</div>
+        <div class="stats-label">Terverifikasi</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col3:
+    st.markdown("""
+    <div class="stats-card">
+        <div class="stats-number">🎯</div>
+        <div class="stats-label">Presisi Tinggi</div>
     </div>
     """, unsafe_allow_html=True)
 
 # Pencarian Section
 st.markdown("<br>", unsafe_allow_html=True)
-st.markdown("<h2 style='text-align: center; color: #2E86AB; margin-bottom: 1.5rem; animation: fadeIn 1s ease-out;'>🔍 Mulai Pencarian</h2>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align: center; color: #1e293b; margin-bottom: 1.5rem;'>Mulai Pencarian Calon Klien</h3>", unsafe_allow_html=True)
 
-# Tombol pencarian utama dengan animasi
+# Tombol pencarian utama
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
-    if st.button("🚀 Mulai Pencarian Calon Klien", use_container_width=True, type="primary"):
+    if st.button("🔍 Mulai Pencarian Calon Klien", use_container_width=True, type="primary"):
         st.session_state['search_triggered'] = True
         st.session_state['loading_start_time'] = time.time()
 
 # Cek jika pencarian sudah dipicu
 if 'search_triggered' in st.session_state and st.session_state['search_triggered']:
-    # Tampilkan animasi loading yang keren
-    st.markdown("""
-    <div class="loading-container">
-        <div class="loading-title">🔍 Mencari Calon Klien Terbaik</div>
-        <div class="loading-subtitle">Menganalisis database Instagram untuk rekomendasi terpersonal...</div>
-        
-        <div class="particles">
-            <div class="particle"></div>
-            <div class="particle"></div>
-            <div class="particle"></div>
-            <div class="particle"></div>
-            <div class="particle"></div>
-        </div>
-        
-        <div class="progress-bar">
-            <div class="progress-fill"></div>
-        </div>
-        
-        <div class="loading-stats">
-            <div class="loading-stat">
-                <div class="loading-stat-number">850+</div>
-                <div class="loading-stat-label">Calon Klien</div>
-            </div>
-            <div class="loading-stat">
-                <div class="loading-stat-number">💯</div>
-                <div class="loading-stat-label">Terverifikasi</div>
-            </div>
-            <div class="loading-stat">
-                <div class="loading-stat-number">🎯</div>
-                <div class="loading-stat-label">Target Presisi</div>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    # Tampilkan loading sederhana
+    with st.spinner("Mencari calon klien terbaik..."):
+        # Progress bar
+        progress_bar = st.progress(0)
+        for i in range(100):
+            time.sleep(0.1)  # Loading 10 detik total
+            progress_bar.progress(i + 1)
     
-    # Dapatkan rekomendasi dengan loading 10 detik
+    # Dapatkan rekomendasi
     recommendations = get_recommendations_with_loading(num_recommendations=6)
-    
-    # Clear loading
-    st.empty()
     
     if len(recommendations) > 0:
         st.markdown(f"""
-        <div style="text-align: center; animation: success 1s ease-out;">
-            <div class="result-count">🎉 Ditemukan {len(recommendations)} calon klien potensial!</div>
-            <p style="color: #666; margin-bottom: 2rem; animation: fadeIn 1s ease-out;">
+        <div style="text-align: center;">
+            <div class="result-count">Ditemukan {len(recommendations)} calon klien potensial</div>
+            <p style="color: #64748b; margin-bottom: 2rem;">
                 Berikut adalah rekomendasi calon klien yang cocok dengan profil bisnis Anda:
             </p>
         </div>
         """, unsafe_allow_html=True)
         
-        # Tampilkan rekomendasi dalam grid dengan animasi
-        st.markdown('<div class="result-section" style="animation: fadeIn 1s ease-out;">', unsafe_allow_html=True)
-        
-        # Buat 3 kolom untuk tampilan yang lebih rapi
+        # Tampilkan rekomendasi dalam grid
         cols = st.columns(3)
         
         for idx, (_, row) in enumerate(recommendations.iterrows()):
@@ -2516,21 +2368,18 @@ if 'search_triggered' in st.session_state and st.session_state['search_triggered
                 <div class="recommendation-card">
                     <div class="username-badge">@{username}</div>
                     <div style="margin: 0.8rem 0;">
-                        <p style="margin: 0.3rem 0; font-size: 0.95rem;">
-                            <strong>Profil:</strong> {username}<br>
-                            <strong style="color: #E4405F;">Instagram</strong> 
-                            <a href="{instagram_link}" target="_blank" class="instagram-link">
-                                <span class="instagram-icon">📷</span> Kunjungi Profil
-                            </a>
+                        <p style="margin: 0.3rem 0; font-size: 0.95rem; color: #475569;">
+                            <strong>Username:</strong> {username}
                         </p>
                     </div>
+                    <a href="{instagram_link}" target="_blank" class="instagram-link">
+                        📷 Kunjungi Profil Instagram
+                    </a>
                 </div>
                 """, unsafe_allow_html=True)
         
-        st.markdown('</div>', unsafe_allow_html=True)
-        
         # Tombol refresh di tengah
-        st.markdown("---")
+        st.markdown("<br>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             if st.button("🔄 Cari Rekomendasi Lainnya", use_container_width=True):
@@ -2538,15 +2387,15 @@ if 'search_triggered' in st.session_state and st.session_state['search_triggered
                 st.session_state['loading_start_time'] = time.time()
                 st.rerun()
         
-        # Informasi tambahan dengan animasi
+        # Tips untuk menghubungi calon klien
         st.markdown("""
-        <div style="text-align: center; margin-top: 2rem; padding: 1.5rem; background: #f8f9fa; border-radius: 10px; animation: fadeIn 1s ease-out;">
-            <h4 style="color: #2E86AB;">💡 Tips untuk Menghubungi Calon Klien</h4>
-            <p style="color: #666; margin-bottom: 0;">
-                1. Perkenalkan diri dan bisnis Anda dengan jelas<br>
-                2. Jelaskan nilai tambah yang Anda tawarkan<br>
-                3. Buat penawaran yang personal dan relevan<br>
-                4. Follow akun Instagram mereka untuk engagement yang lebih baik
+        <div class="tips-box">
+            <div class="tips-title">💡 Tips untuk Menghubungi Calon Klien</div>
+            <p style="color: #475569; margin-bottom: 0.5rem;">
+                1. <strong>Perkenalkan diri dengan jelas</strong> - Sebutkan nama dan bisnis Anda<br>
+                2. <strong>Jelaskan nilai tambah</strong> - Apa yang Anda tawarkan untuk mereka<br>
+                3. <strong>Personalisasikan pesan</strong> - Sesuaikan dengan konten mereka<br>
+                4. <strong>Follow dan engage</strong> - Ikuti akun mereka dan beri komentar relevan
             </p>
         </div>
         """, unsafe_allow_html=True)
